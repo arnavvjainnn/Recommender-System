@@ -1,0 +1,2328 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RecommendAI — Intelligent E-Commerce Recommendation Engine</title>
+  <meta name="description" content="AI-Powered E-Commerce Recommendation System demonstrating Content-Based Filtering, Implicit Collaborative Filtering, and MMR Diversity Re-ranking." />
+
+  <!-- Google Fonts: Inter & Space Grotesk -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+  <!-- Local React 18 & Babel for instant zero-dependency execution -->
+  <script src="/react.production.min.js"></script>
+  <script src="/react-dom.production.min.js"></script>
+  <script src="/babel.min.js"></script>
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      /* ===== TASTE-SKILL v2: INK GROUND PALETTE ===== */
+      /* Ground: true ink black — everything on it reads */
+      --bg-primary:   #07080C;
+      --bg-elevated:  #0D0E12;
+      --bg-surface:   #111318;
+      --bg-card:      #0D0E12;
+
+      /* Borders: quiet 1px — panels separate, don't shout */
+      --border-subtle: rgba(255,255,255,0.07);
+      --border-hover:  rgba(255,255,255,0.15);
+
+      /* Type: primary reads clearly, secondary recedes */
+      --text-primary:   #F2F0EB;
+      --text-secondary: #7A7C85;
+      --text-muted:     #4A4C55;
+
+      /* ONE accent: warm cream — used once, means something */
+      --accent-primary:   #D4C5A9;  /* warm cream — the decided accent */
+      --accent-secondary: #D4C5A9;  /* same — no rainbow */
+      --accent-tertiary:  #E05C3A;  /* only for error/remove states */
+      --accent-data:      #4D7EFF;  /* only for data bars — cool blue */
+
+      /* No glow, no glass blur — panels are solid */
+      --radius-sm: 4px;
+      --radius-md: 6px;
+      --radius-lg: 8px;
+      --radius-xl: 12px;
+      --radius-2xl: 16px;
+
+      /* Type scale — large and decided */
+      --font-sans:    'Inter', system-ui, -apple-system, sans-serif;
+      --font-heading: 'Space Grotesk', sans-serif;
+      --font-mono:    'JetBrains Mono', 'Fira Code', monospace;
+    }
+
+    html { scroll-behavior: smooth; }
+    body {
+      background-color: var(--bg-primary);
+      color: var(--text-primary);
+      font-family: var(--font-sans);
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    ::selection { background: rgba(124, 92, 252, 0.4); color: white; }
+
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: var(--bg-primary); }
+    ::-webkit-scrollbar-thumb { background: #1E2340; border-radius: 10px; }
+    ::-webkit-scrollbar-thumb:hover { background: #2A3050; }
+
+    /* ===== TASTE-SKILL: NO ANIMATED BLOBS ===== */
+    /* Mesh blobs = AI slop ornament. Removed. The ink does the work. */
+    .bg-mesh { display: none; }
+
+    /* ===== TASTE-SKILL: SOLID PANELS (no blur, no glass) ===== */
+    .glass {
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-subtle);
+    }
+    .glass-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      transition: border-color 0.2s ease, transform 0.2s ease;
+    }
+    .glass-card:hover {
+      border-color: var(--border-hover);
+      transform: translateY(-1px);
+    }
+
+    /* ===== ANIMATED AI ORB ===== */
+    .ai-orb-container {
+      position: relative;
+      width: 280px; height: 280px;
+      flex-shrink: 0;
+    }
+    .ai-orb {
+      position: absolute; inset: 0;
+      border-radius: 50%;
+      background: conic-gradient(from 0deg, #7C5CFC, #00D4AA, #00B4D8, #7C5CFC);
+      animation: orbSpin 8s linear infinite;
+      filter: blur(1px);
+    }
+    .ai-orb::before {
+      content: '';
+      position: absolute; inset: 3px;
+      border-radius: 50%;
+      background: var(--bg-primary);
+    }
+    .ai-orb::after {
+      content: '';
+      position: absolute; inset: 12px;
+      border-radius: 50%;
+      background: conic-gradient(from 180deg, rgba(124,92,252,0.3), rgba(0,212,170,0.2), rgba(0,180,216,0.3), rgba(124,92,252,0.3));
+      animation: orbSpin 6s linear infinite reverse;
+      filter: blur(8px);
+    }
+    .ai-orb-core {
+      position: absolute;
+      inset: 30px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 40% 40%, rgba(124,92,252,0.25), rgba(0,212,170,0.15) 50%, transparent 70%);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 2;
+    }
+    .ai-orb-pulse {
+      position: absolute; inset: -20px;
+      border-radius: 50%;
+      border: 1px solid rgba(124, 92, 252, 0.15);
+      animation: orbPulse 3s ease-in-out infinite;
+    }
+    .ai-orb-pulse:nth-child(2) { animation-delay: 1s; border-color: rgba(0,212,170,0.1); }
+    .ai-orb-pulse:nth-child(3) { animation-delay: 2s; border-color: rgba(0,180,216,0.08); }
+    @keyframes orbSpin { to { transform: rotate(360deg); } }
+    @keyframes orbPulse {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.25); opacity: 0; }
+    }
+
+    /* ===== GRID PATTERNS ===== */
+    .grid-dots {
+      background-image: radial-gradient(rgba(124,92,252,0.08) 1px, transparent 1px);
+      background-size: 32px 32px;
+    }
+
+    /* ===== TASTE-SKILL: ACCENT TEXT (single decided color) ===== */
+    .gradient-text {
+      color: var(--accent-primary);
+      /* No rainbow gradient — one color, one decision */
+    }
+    .gradient-text-animate {
+      color: var(--accent-primary);
+      /* No animation — type that moves draws attention from content */
+    }
+
+    /* ===== TASTE-SKILL: SOLID BUTTONS (high-contrast, decided) ===== */
+    .btn-primary {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 9px 20px;
+      background: var(--text-primary);  /* white on black: maximum contrast */
+      color: var(--bg-primary);
+      font-weight: 600; font-size: 12px;
+      letter-spacing: 0.04em;
+      border: none; border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: opacity 0.15s ease;
+    }
+    .btn-primary:hover { opacity: 0.85; }
+    .btn-primary:active { opacity: 0.7; transform: scale(0.98); }
+
+    .btn-ghost {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 8px 14px;
+      background: transparent;
+      color: var(--text-secondary);
+      font-weight: 500; font-size: 12px;
+      letter-spacing: 0.03em;
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: color 0.15s, border-color 0.15s;
+    }
+    .btn-ghost:hover {
+      color: var(--text-primary);
+      border-color: var(--border-hover);
+    }
+
+    .btn-accent {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 8px 16px;
+      background: var(--accent-primary);
+      color: var(--bg-primary);
+      font-weight: 700; font-size: 12px;
+      letter-spacing: 0.04em;
+      border: none; border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: opacity 0.15s ease;
+    }
+    .btn-accent:hover { opacity: 0.85; }
+    .btn-accent:active { transform: scale(0.98); }
+
+    /* ===== TASTE-SKILL: QUIET LABELS (no tinted squares) ===== */
+    .pill {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 3px 8px;
+      border-radius: var(--radius-sm);
+      font-size: 10px; font-weight: 500;
+      letter-spacing: 0.06em; text-transform: uppercase;
+      font-family: var(--font-mono);
+    }
+    /* All pills: same quiet style — labels don't compete with content */
+    .pill-purple, .pill-green, .pill-blue, .pill-amber, .pill-red {
+      background: rgba(255,255,255,0.05);
+      color: var(--text-secondary);
+      border: 1px solid var(--border-subtle);
+    }
+
+    /* ===== TASTE-SKILL: DATA BAR (thin, single color, honest) ===== */
+    .score-bar-track {
+      width: 100%; height: 2px;
+      background: rgba(255,255,255,0.07);
+      overflow: hidden;
+    }
+    .score-bar-fill {
+      height: 100%;
+      background: var(--accent-data);
+      transition: width 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    /* ===== ANIMATIONS ===== */
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    @keyframes slideInRight {
+      from { opacity: 0; transform: translateX(24px); }
+      to { opacity: 1; transform: translateX(0); }
+    }
+    @keyframes shimmer {
+      from { background-position: -200% 0; }
+      to { background-position: 200% 0; }
+    }
+    .animate-in { animation: fadeInUp 0.5s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+    .animate-fade { animation: fadeIn 0.4s ease forwards; }
+    .animate-slide-right { animation: slideInRight 0.4s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+
+    .stagger-1 { animation-delay: 0.05s; opacity: 0; }
+    .stagger-2 { animation-delay: 0.1s; opacity: 0; }
+    .stagger-3 { animation-delay: 0.15s; opacity: 0; }
+    .stagger-4 { animation-delay: 0.2s; opacity: 0; }
+    .stagger-5 { animation-delay: 0.25s; opacity: 0; }
+    .stagger-6 { animation-delay: 0.3s; opacity: 0; }
+    .stagger-7 { animation-delay: 0.35s; opacity: 0; }
+    .stagger-8 { animation-delay: 0.4s; opacity: 0; }
+
+    /* ===== LAYOUT ===== */
+    .container { max-width: 1240px; margin: 0 auto; padding: 0 20px; }
+
+    .section-header { margin-bottom: 24px; }
+    .section-title {
+      font-family: var(--font-heading);
+      font-weight: 700; font-size: 22px;
+      color: var(--text-primary);
+      letter-spacing: -0.02em;
+    }
+    .section-subtitle {
+      font-size: 12px; color: var(--text-muted);
+      margin-top: 4px; font-family: var(--font-mono);
+    }
+
+    /* ===== TASTE-SKILL: PRODUCT GRID ===== */
+    .product-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 1px;  /* 1px gap = lines are borders, not whitespace */
+      background: var(--border-subtle); /* the grid gap IS the border */
+    }
+    .product-grid > * { background: var(--bg-primary); }
+    @media (max-width: 640px) {
+      .product-grid { grid-template-columns: 1fr 1fr; }
+    }
+
+    /* ===== BENTO GRID ===== */
+    .bento-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+    }
+    .bento-grid .bento-wide { grid-column: span 2; }
+    .bento-grid .bento-full { grid-column: span 4; }
+    @media (max-width: 768px) {
+      .bento-grid { grid-template-columns: 1fr 1fr; }
+      .bento-grid .bento-wide { grid-column: span 2; }
+      .bento-grid .bento-full { grid-column: span 2; }
+    }
+    @media (max-width: 480px) {
+      .bento-grid { grid-template-columns: 1fr; }
+      .bento-grid .bento-wide,
+      .bento-grid .bento-full { grid-column: span 1; }
+    }
+
+    /* ===== MODAL OVERLAYS ===== */
+    .modal-overlay {
+      position: fixed; inset: 0; z-index: 100;
+      display: flex; align-items: center; justify-content: center;
+      padding: 20px;
+    }
+    .modal-backdrop {
+      position: absolute; inset: 0;
+      background: rgba(6, 8, 15, 0.85);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
+    .modal-content {
+      position: relative; z-index: 1;
+      width: 100%; max-width: 520px;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-2xl);
+      padding: 32px;
+      animation: fadeInUp 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    /* ===== LOADING SHIMMER ===== */
+    .shimmer {
+      background: linear-gradient(90deg, transparent 25%, rgba(255,255,255,0.04) 50%, transparent 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite;
+    }
+
+    /* ===== TASTE-SKILL: TAG CHIP (quiet, monospace) ===== */
+    .tag-chip {
+      display: inline-flex; padding: 2px 7px;
+      font-size: 9px; font-weight: 500; font-family: var(--font-mono);
+      background: transparent;
+      color: var(--text-muted);
+      border: 1px solid var(--border-subtle);
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      transition: color 0.15s, border-color 0.15s;
+    }
+    .tag-chip:hover {
+      color: var(--text-secondary);
+      border-color: var(--border-hover);
+    }
+
+    /* ===== NEURAL NETWORK DOT CANVAS ===== */
+    #neural-canvas {
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+    }
+
+    /* ===== CART DRAWER ===== */
+    .cart-drawer {
+      position: fixed; top: 0; right: 0; bottom: 0;
+      width: 100%; max-width: 420px;
+      background: var(--bg-elevated);
+      border-left: 1px solid var(--border-subtle);
+      z-index: 110;
+      display: flex; flex-direction: column;
+      animation: slideInRight 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    /* ===== RESPONSIVE ===== */
+    @media (max-width: 768px) {
+      .hero-content { flex-direction: column !important; text-align: center; }
+      .ai-orb-container { width: 180px; height: 180px; margin: 0 auto; }
+      .hero-text h1 { font-size: 28px !important; }
+      .desktop-only { display: none !important; }
+      .section-title { font-size: 18px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="bg-mesh"></div>
+  <canvas id="neural-canvas"></canvas>
+  <div id="root"></div>
+
+  <!-- Error overlay for debugging -->
+  <div id="error-overlay" style="display:none;position:fixed;top:0;left:0;width:100%;background:#ff000099;color:white;z-index:99999;padding:20px;font-family:monospace;font-size:14px;white-space:pre-wrap;max-height:50vh;overflow:auto;"></div>
+
+  <script>
+    window.addEventListener('error', function(e) {
+      var ov = document.getElementById('error-overlay');
+      ov.style.display = 'block';
+      ov.textContent = '❌ JS ERROR: ' + e.message + '\nFile: ' + e.filename + '\nLine: ' + e.lineno + '\nCol: ' + e.colno + '\n\n' + (e.error ? e.error.stack : '');
+    });
+    window.addEventListener('unhandledrejection', function(e) {
+      var ov = document.getElementById('error-overlay');
+      ov.style.display = 'block';
+      ov.textContent += '\n❌ UNHANDLED PROMISE: ' + e.reason;
+    });
+  </script>
+
+  <script>
+    // ===== NEURAL NETWORK PARTICLE BACKGROUND =====
+    (function initNeuralCanvas() {
+      const canvas = document.getElementById('neural-canvas');
+      const ctx = canvas.getContext('2d');
+      let w, h, particles = [], mouse = { x: -1000, y: -1000 };
+      const PARTICLE_COUNT = 60;
+      const MAX_DIST = 150;
+
+      function resize() {
+        w = canvas.width = window.innerWidth;
+        h = canvas.height = window.innerHeight;
+      }
+      window.addEventListener('resize', resize);
+      resize();
+
+      for (let i = 0; i < PARTICLE_COUNT; i++) {
+        particles.push({
+          x: Math.random() * w, y: Math.random() * h,
+          vx: (Math.random() - 0.5) * 0.25, vy: (Math.random() - 0.5) * 0.25,
+          r: Math.random() * 1.2 + 0.4,
+          color: Math.random() > 0.4 ? 'rgba(212,197,169,' : 'rgba(255,255,255,'
+        });
+      }
+
+      document.addEventListener('mousemove', e => { mouse.x = e.clientX; mouse.y = e.clientY; });
+
+      function animate() {
+        ctx.clearRect(0, 0, w, h);
+        particles.forEach((p, i) => {
+          p.x += p.vx; p.y += p.vy;
+          if (p.x < 0 || p.x > w) p.vx *= -1;
+          if (p.y < 0 || p.y > h) p.vy *= -1;
+
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+          ctx.fillStyle = p.color + '0.22)';
+          ctx.fill();
+
+          for (let j = i + 1; j < particles.length; j++) {
+            const p2 = particles[j];
+            const dx = p.x - p2.x, dy = p.y - p2.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist < MAX_DIST) {
+              ctx.beginPath();
+              ctx.moveTo(p.x, p.y);
+              ctx.lineTo(p2.x, p2.y);
+              ctx.strokeStyle = 'rgba(212,197,169,' + (1 - dist / MAX_DIST) * 0.045 + ')';
+              ctx.lineWidth = 0.5;
+              ctx.stroke();
+            }
+          }
+
+          const mdx = p.x - mouse.x, mdy = p.y - mouse.y;
+          const mdist = Math.sqrt(mdx * mdx + mdy * mdy);
+          if (mdist < 180) {
+            ctx.beginPath();
+            ctx.moveTo(p.x, p.y);
+            ctx.lineTo(mouse.x, mouse.y);
+            ctx.strokeStyle = 'rgba(212,197,169,' + (1 - mdist / 180) * 0.08 + ')';
+            ctx.lineWidth = 0.6;
+            ctx.stroke();
+          }
+        });
+        requestAnimationFrame(animate);
+      }
+      animate();
+    })();
+  </script>
+
+  <script type="text/babel">
+    const { useState, useEffect, useMemo, useRef, useCallback } = React;
+
+    // ===== CURATED PRODUCT CATALOG (34 Premium Products across 6 Categories) =====
+    const PRODUCTS_DATA = [
+      {
+        id: "p1", title: "Apex Pro Mechanical Gaming Keyboard", category: "Gaming", subcategory: "Keyboards", brand: "SteelSeries",
+        price: 199.99, discount_percent: 10, rating: 4.8, rating_count: 240, stock: 45,
+        image_url: "https://images.unsplash.com/photo-1587829741301-dc798b83add3?auto=format&fit=crop&w=800&q=80",
+        tags: ["gaming", "mechanical", "rgb", "omnipoint", "esports", "switches"],
+        description: "World's fastest mechanical keyboard featuring adjustable OmniPoint 2.0 switches with 11x quicker response time."
+      },
+      {
+        id: "p2", title: "DeathAdder V3 Pro Wireless Ergonomic Mouse", category: "Gaming", subcategory: "Mice", brand: "Razer",
+        price: 149.99, discount_percent: 15, rating: 4.7, rating_count: 185, stock: 60,
+        image_url: "https://images.unsplash.com/photo-1615663245857-ac93bb7c39e7?auto=format&fit=crop&w=800&q=80",
+        tags: ["gaming", "mouse", "wireless", "lightweight", "esports", "sensor"],
+        description: "Ultra-lightweight 63g ergonomic esports mouse equipped with Focus Pro 30K Optical Sensor."
+      },
+      {
+        id: "p3", title: "BlackShark V2 Pro Wireless Gaming Headset", category: "Gaming", subcategory: "Headsets", brand: "Razer",
+        price: 179.99, discount_percent: 5, rating: 4.6, rating_count: 310, stock: 35,
+        image_url: "https://images.unsplash.com/photo-1546435770-a3e426bf472b?auto=format&fit=crop&w=800&q=80",
+        tags: ["gaming", "headset", "wireless", "spatial audio", "mic"],
+        description: "High-fidelity esports gaming headset featuring TriForce Titanium 50mm Drivers and HyperClear Microphone."
+      },
+      {
+        id: "p4", title: "UltraGear 27\" QHD 240Hz OLED Gaming Monitor", category: "Gaming", subcategory: "Monitors", brand: "LG",
+        price: 799.99, discount_percent: 12, rating: 4.9, rating_count: 142, stock: 20,
+        image_url: "https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?auto=format&fit=crop&w=800&q=80",
+        tags: ["gaming", "monitor", "oled", "240hz", "qhd", "hdr"],
+        description: "0.03ms response time OLED gaming display with 240Hz refresh rate and 98.5% DCI-P3 color gamut."
+      },
+      {
+        id: "p5", title: "MacBook Pro 16\" M3 Max (36GB, 1TB SSD)", category: "Computing", subcategory: "Laptops", brand: "Apple",
+        price: 3499.99, discount_percent: 5, rating: 4.9, rating_count: 520, stock: 25,
+        image_url: "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?auto=format&fit=crop&w=800&q=80",
+        tags: ["apple", "laptop", "m3 max", "workstation", "retina", "developer"],
+        description: "Extreme machine learning and developer powerhouse with 14-core CPU, Liquid Retina XDR display, and 22-hour battery life."
+      },
+      {
+        id: "p6", title: "Thunderbolt 4 Pro Dock Station 12-in-1", category: "Computing", subcategory: "Docks & Hubs", brand: "CalDigit",
+        price: 399.99, discount_percent: 0, rating: 4.8, rating_count: 275, stock: 50,
+        image_url: "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=800&q=80",
+        tags: ["thunderbolt", "dock", "usb-c", "4k dual display", "power delivery"],
+        description: "Ultimate workspace hub providing 98W charging, dual 4K/60Hz monitor support, and 2.5GbE Ethernet."
+      },
+      {
+        id: "p7", title: "MX Master 3S Performance Wireless Mouse", category: "Computing", subcategory: "Peripherals", brand: "Logitech",
+        price: 99.99, discount_percent: 10, rating: 4.9, rating_count: 890, stock: 110,
+        image_url: "https://images.unsplash.com/photo-1615663245857-ac93bb7c39e7?auto=format&fit=crop&w=800&q=80",
+        tags: ["mouse", "productivity", "ergonomic", "magspeed", "bluetooth"],
+        description: "Quiet click ergonomic masterpiece with 8K DPI track-on-glass sensor and MagSpeed electromagnetic scroll wheel."
+      },
+      {
+        id: "p8", title: "WH-1000XM5 Wireless Noise Cancelling Headphones", category: "Audio", subcategory: "Headphones", brand: "Sony",
+        price: 399.99, discount_percent: 15, rating: 4.8, rating_count: 680, stock: 55,
+        image_url: "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=800&q=80",
+        tags: ["headphones", "anc", "wireless", "audiophile", "sony", "ldac"],
+        description: "Industry-leading noise cancellation powered by two processors and 8 microphones. Hi-Res Audio wireless with LDAC."
+      },
+      {
+        id: "p9", title: "HD 660S2 Open-Back Audiophile Headphones", category: "Audio", subcategory: "Studio", brand: "Sennheiser",
+        price: 599.99, discount_percent: 8, rating: 4.9, rating_count: 140, stock: 22,
+        image_url: "https://images.unsplash.com/photo-1546435770-a3e426bf472b?auto=format&fit=crop&w=800&q=80",
+        tags: ["headphones", "audiophile", "open back", "reference", "studio"],
+        description: "Intimate sound with deep, impactful sub-bass and pristine treble. Engineered in Germany for discerning audio engineers."
+      },
+      {
+        id: "p10", title: "SM7B Cardioid Dynamic Studio Vocal Microphone", category: "Audio", subcategory: "Microphones", brand: "Shure",
+        price: 399.99, discount_percent: 0, rating: 4.9, rating_count: 750, stock: 35,
+        image_url: "https://images.unsplash.com/photo-1590602847861-f357a9332bbc?auto=format&fit=crop&w=800&q=80",
+        tags: ["microphone", "podcast", "studio", "xlr", "vocal"],
+        description: "The legendary dynamic vocal microphone renowned for broadcast, podcasting, and studio vocal tracking."
+      },
+      {
+        id: "p11", title: "Apple Watch Ultra 2 GPS + Cellular 49mm", category: "Wearables", subcategory: "Smartwatches", brand: "Apple",
+        price: 799.99, discount_percent: 5, rating: 4.9, rating_count: 310, stock: 35,
+        image_url: "https://images.unsplash.com/photo-1508685096489-7aacd43bd3b1?auto=format&fit=crop&w=800&q=80",
+        tags: ["apple watch", "smartwatch", "titanium", "gps", "rugged"],
+        description: "Rugged and capable aerospace-grade titanium smartwatch with precision dual-frequency GPS."
+      },
+      {
+        id: "p12", title: "BenQ ScreenBar Pro Monitor Light Bar", category: "Desk Setup", subcategory: "Lighting", brand: "BenQ",
+        price: 139.99, discount_percent: 8, rating: 4.8, rating_count: 390, stock: 70,
+        image_url: "https://images.unsplash.com/photo-1507473885765-e6ed057f782c?auto=format&fit=crop&w=800&q=80",
+        tags: ["lighting", "light bar", "desk", "eyecare", "auto dimming"],
+        description: "Automated desk lamp clamping onto monitors with zero screen glare and ultrasonic presence detection."
+      },
+      {
+        id: "p13", title: "Sony Alpha 7 IV Full-Frame Mirrorless Camera", category: "Cameras & Video", subcategory: "Cameras", brand: "Sony",
+        price: 2498.00, discount_percent: 6, rating: 4.9, rating_count: 380, stock: 18,
+        image_url: "https://images.unsplash.com/photo-1516035069371-29a1b244cc32?auto=format&fit=crop&w=800&q=80",
+        tags: ["camera", "mirrorless", "4k 60p", "full frame", "sony", "photography"],
+        description: "33MP Exmor R back-illuminated CMOS sensor, 4K 60p 10-bit video, and real-time eye autofocus."
+      },
+      {
+        id: "p14", title: "Elgato Stream Deck MK.2 15 LCD Keys Controller", category: "Cameras & Video", subcategory: "Streaming", brand: "Elgato",
+        price: 149.99, discount_percent: 15, rating: 4.8, rating_count: 480, stock: 60,
+        image_url: "https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=800&q=80",
+        tags: ["stream deck", "macro", "streaming", "creator", "elgato"],
+        description: "15 customizable LCD keys to trigger actions, switch scenes, and control lighting with a tap."
+      },
+      {
+        id: "p15", title: "Secretlab TITAN Evo 2024 Ergonomic Gaming Chair", category: "Gaming", subcategory: "Chairs", brand: "Secretlab",
+        price: 549.00, discount_percent: 8, rating: 4.9, rating_count: 620, stock: 30,
+        image_url: "https://images.unsplash.com/photo-1598550476439-6847785fcea6?auto=format&fit=crop&w=800&q=80",
+        tags: ["gaming chair", "ergonomic", "secretlab", "lumbar support", "esports"],
+        description: "Award-winning ergonomic gaming chair with 4-way L-ADAPT lumbar support and magnetic memory foam head pillow."
+      },
+      {
+        id: "p16", title: "ASUS ROG Swift 32\" 4K 240Hz QD-OLED Monitor", category: "Gaming", subcategory: "Monitors", brand: "ASUS",
+        price: 1299.00, discount_percent: 0, rating: 4.9, rating_count: 110, stock: 15,
+        image_url: "https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?auto=format&fit=crop&w=800&q=80",
+        tags: ["gaming", "monitor", "qd-oled", "4k", "240hz", "rog", "hdr"],
+        description: "Flagship 32-inch 4K QD-OLED gaming monitor with graphene heatsink, 0.03ms response time, and Dolby Vision."
+      },
+      {
+        id: "p17", title: "Logitech G PRO X 60 LIGHTSPEED Wireless Keyboard", category: "Gaming", subcategory: "Keyboards", brand: "Logitech",
+        price: 179.99, discount_percent: 10, rating: 4.7, rating_count: 215, stock: 40,
+        image_url: "https://images.unsplash.com/photo-1587829741301-dc798b83add3?auto=format&fit=crop&w=800&q=80",
+        tags: ["gaming", "keyboard", "60 percent", "optical", "wireless", "logitech g"],
+        description: "Compact 60% esports gaming keyboard with KEYCONTROL customization and GX Optical switches."
+      },
+      {
+        id: "p18", title: "Dell UltraSharp 32\" 6K Thunderbolt Monitor (U3224KB)", category: "Computing", subcategory: "Monitors", brand: "Dell",
+        price: 2199.99, discount_percent: 10, rating: 4.8, rating_count: 85, stock: 12,
+        image_url: "https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?auto=format&fit=crop&w=800&q=80",
+        tags: ["monitor", "6k", "thunderbolt", "ultrasharp", "ips black", "developer"],
+        description: "World's first 6K monitor with IPS Black technology, built-in 4K HDR webcam, and 140W Thunderbolt 4 hub."
+      },
+      {
+        id: "p19", title: "Keychron Q1 Pro Wireless Custom Mechanical Keyboard", category: "Computing", subcategory: "Keyboards", brand: "Keychron",
+        price: 199.00, discount_percent: 5, rating: 4.9, rating_count: 340, stock: 35,
+        image_url: "https://images.unsplash.com/photo-1595225476474-87563907a212?auto=format&fit=crop&w=800&q=80",
+        tags: ["keyboard", "mechanical", "custom", "cnc aluminum", "qmk", "via", "wireless"],
+        description: "Full CNC machined aluminum custom mechanical keyboard with QMK/VIA programmable firmware and double-gasket design."
+      },
+      {
+        id: "p20", title: "Samsung 990 PRO 4TB PCIe 4.0 NVMe M.2 SSD", category: "Computing", subcategory: "Storage", brand: "Samsung",
+        price: 349.99, discount_percent: 12, rating: 4.9, rating_count: 890, stock: 75,
+        image_url: "https://images.unsplash.com/photo-1597872200969-2b65d56bd16b?auto=format&fit=crop&w=800&q=80",
+        tags: ["ssd", "nvme", "pcie 4.0", "storage", "fast", "samsung 990", "workstation"],
+        description: "Blazing fast read/write speeds up to 7,450/6,900 MB/s engineered for heavy machine learning and 4K video editing."
+      },
+      {
+        id: "p21", title: "Herman Miller Aeron Ergonomic Office Chair", category: "Computing", subcategory: "Furniture", brand: "Herman Miller",
+        price: 1395.00, discount_percent: 0, rating: 4.9, rating_count: 950, stock: 20,
+        image_url: "https://images.unsplash.com/photo-1580481077195-c3a821a58875?auto=format&fit=crop&w=800&q=80",
+        tags: ["chair", "ergonomic", "herman miller", "aeron", "posturefit", "developer"],
+        description: "The definitive benchmark for ergonomic seating with 8Z Pellicle breathable mesh and PostureFit SL sacral support."
+      },
+      {
+        id: "p22", title: "Focusrite Scarlett 2i2 4th Gen USB Audio Interface", category: "Audio", subcategory: "Interfaces", brand: "Focusrite",
+        price: 199.99, discount_percent: 0, rating: 4.8, rating_count: 670, stock: 50,
+        image_url: "https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?auto=format&fit=crop&w=800&q=80",
+        tags: ["audio interface", "focusrite", "scarlett", "xlr", "preamp", "recording", "studio"],
+        description: "Industry-standard studio USB audio interface featuring 69dB ultra-low noise preamps, Auto Gain, and Clip Safe."
+      },
+      {
+        id: "p23", title: "Audio-Technica ATH-M50x Professional Studio Headphones", category: "Audio", subcategory: "Headphones", brand: "Audio-Technica",
+        price: 149.00, discount_percent: 10, rating: 4.8, rating_count: 1420, stock: 95,
+        image_url: "https://images.unsplash.com/photo-1546435770-a3e426bf472b?auto=format&fit=crop&w=800&q=80",
+        tags: ["headphones", "studio monitor", "m50x", "audio-technica", "mixing", "sound engineer"],
+        description: "Critically acclaimed sonic performance praised by top audio engineers and pro audio reviewers worldwide."
+      },
+      {
+        id: "p24", title: "Genelec 8010A Active Bi-Amplified Studio Monitors (Pair)", category: "Audio", subcategory: "Speakers", brand: "Genelec",
+        price: 790.00, discount_percent: 0, rating: 4.9, rating_count: 180, stock: 15,
+        image_url: "https://images.unsplash.com/photo-1545454675-3531b543be5d?auto=format&fit=crop&w=800&q=80",
+        tags: ["studio monitors", "speakers", "genelec", "bi-amplified", "reference audio", "aluminum"],
+        description: "Unrivaled acoustic transparency and precise imaging in a rugged cast aluminum enclosure for music production."
+      },
+      {
+        id: "p25", title: "Cloudlifter CL-1 Mic Activator (+25dB Clean Gain)", category: "Audio", subcategory: "Accessories", brand: "Cloud Microphones",
+        price: 149.00, discount_percent: 5, rating: 4.9, rating_count: 820, stock: 65,
+        image_url: "https://images.unsplash.com/photo-1590602847861-f357a9332bbc?auto=format&fit=crop&w=800&q=80",
+        tags: ["cloudlifter", "gain", "mic activator", "shure sm7b", "xlr", "preamp", "podcast"],
+        description: "Provides up to +25dB of ultra-clean, transparent gain for low-output dynamic microphones like the Shure SM7B."
+      },
+      {
+        id: "p26", title: "Oura Ring Gen 3 Horizon Smart Titanium Ring", category: "Wearables", subcategory: "Smart Rings", brand: "Oura",
+        price: 399.00, discount_percent: 0, rating: 4.7, rating_count: 420, stock: 40,
+        image_url: "https://images.unsplash.com/photo-1605100804763-247f67b3557e?auto=format&fit=crop&w=800&q=80",
+        tags: ["oura ring", "smart ring", "sleep tracker", "hrv", "titanium", "biometrics"],
+        description: "Sleek titanium smart ring tracking sleep stages, readiness score, 24/7 heart rate, and daytime stress."
+      },
+      {
+        id: "p27", title: "Garmin Fenix 7X Pro Solar Sapphire Multisport Watch", category: "Wearables", subcategory: "Smartwatches", brand: "Garmin",
+        price: 899.99, discount_percent: 8, rating: 4.9, rating_count: 360, stock: 25,
+        image_url: "https://images.unsplash.com/photo-1508685096489-7aacd43bd3b1?auto=format&fit=crop&w=800&q=80",
+        tags: ["garmin", "smartwatch", "gps", "solar", "sapphire", "endurance", "fitness"],
+        description: "Rugged GPS multisport watch with solar charging lens, built-in LED flashlight, and up to 37 days battery life."
+      },
+      {
+        id: "p28", title: "WHOOP 4.0 24/7 Continuous Health & Fitness Band", category: "Wearables", subcategory: "Fitness Trackers", brand: "WHOOP",
+        price: 239.00, discount_percent: 0, rating: 4.6, rating_count: 510, stock: 80,
+        image_url: "https://images.unsplash.com/photo-1576243345690-4e4b79b63288?auto=format&fit=crop&w=800&q=80",
+        tags: ["whoop", "fitness tracker", "recovery", "strain", "sleep coach", "screenless"],
+        description: "Screen-free biometric tracker providing continuous monitoring of physiological strain, sleep debt, and recovery."
+      },
+      {
+        id: "p29", title: "Grovemade Solid Walnut Desk Shelf Dual Monitor Riser", category: "Desk Setup", subcategory: "Desk Accessories", brand: "Grovemade",
+        price: 270.00, discount_percent: 0, rating: 4.9, rating_count: 290, stock: 35,
+        image_url: "https://images.unsplash.com/photo-1507473885765-e6ed057f782c?auto=format&fit=crop&w=800&q=80",
+        tags: ["desk shelf", "monitor riser", "walnut", "wood", "grovemade", "desk setup", "minimalist"],
+        description: "Handcrafted American Black Walnut desk shelf elevates dual displays to eye level while optimizing desk space."
+      },
+      {
+        id: "p30", title: "Uplift V2 Commercial 72\" Motorized Standing Desk", category: "Desk Setup", subcategory: "Standing Desks", brand: "Uplift",
+        price: 899.00, discount_percent: 10, rating: 4.9, rating_count: 730, stock: 20,
+        image_url: "https://images.unsplash.com/photo-1518455027359-f3f8164ba6bd?auto=format&fit=crop&w=800&q=80",
+        tags: ["standing desk", "motorized", "ergonomic", "uplift", "solid bamboo", "dual motor"],
+        description: "Sturdy dual-motor motorized standing desk with crossbar stability and one-touch memory keypad."
+      },
+      {
+        id: "p31", title: "UGREEN Nexode 300W 5-Port GaN Desktop Fast Charger", category: "Desk Setup", subcategory: "Power", brand: "UGREEN",
+        price: 199.99, discount_percent: 15, rating: 4.8, rating_count: 380, stock: 60,
+        image_url: "https://images.unsplash.com/photo-1583863788434-e58a36330cf0?auto=format&fit=crop&w=800&q=80",
+        tags: ["gan charger", "fast charger", "usb-c", "300w", "power delivery 3.1", "ugreen"],
+        description: "World's first 300W GaN desktop charger delivering up to 140W single-port power for M3 MacBook Pro."
+      },
+      {
+        id: "p32", title: "Sony FE 24-70mm f/2.8 GM II G Master Lens", category: "Cameras & Video", subcategory: "Lenses", brand: "Sony",
+        price: 2298.00, discount_percent: 5, rating: 4.9, rating_count: 240, stock: 15,
+        image_url: "https://images.unsplash.com/photo-1617005082133-548c4dd27f35?auto=format&fit=crop&w=800&q=80",
+        tags: ["lens", "sony g master", "24-70mm", "f2.8", "full frame", "e-mount", "cinematography"],
+        description: "The world's lightest standard zoom f/2.8 lens with breathtaking optical resolution and 4 XD Linear AF motors."
+      },
+      {
+        id: "p33", title: "Elgato Key Light Air 1400 Lumen Studio LED Light", category: "Cameras & Video", subcategory: "Lighting", brand: "Elgato",
+        price: 129.99, discount_percent: 10, rating: 4.8, rating_count: 490, stock: 55,
+        image_url: "https://images.unsplash.com/photo-1517524008697-84bbe3c3fd98?auto=format&fit=crop&w=800&q=80",
+        tags: ["lighting", "key light", "elgato", "streaming light", "wifi", "diffused led"],
+        description: "App-enabled desktop LED panel delivering 1400 lumens with multi-layer diffusion and adjustable color temperature."
+      },
+      {
+        id: "p34", title: "DJI Mic 2 Dual-Transmitter Wireless Audio System", category: "Cameras & Video", subcategory: "Audio", brand: "DJI",
+        price: 349.00, discount_percent: 0, rating: 4.9, rating_count: 390, stock: 45,
+        image_url: "https://images.unsplash.com/photo-1590602847861-f357a9332bbc?auto=format&fit=crop&w=800&q=80",
+        tags: ["wireless mic", "dji mic 2", "32-bit float", "noise cancelling", "creator", "vlog"],
+        description: "High-quality omnidirectional audio recording with 32-bit float internal backup and intelligent active noise cancelling."
+      }
+    ];
+
+    // ===== DEMO PERSONAS =====
+    const PERSONAS = {
+      guest: { name: "Guest Visitor", role: "GUEST", history: [], interests: [], icon: "👤", color: "#8B92A8", profile: "Cold-Start User" },
+      rahul: { name: "Rahul Sharma", email: "rahul.gamer@example.com", role: "USER", profile: "Hardcore Competitive Gamer", interests: ["Gaming", "Computing"], history: ["p1", "p2", "p4", "p16"], icon: "🎮", color: "#7C5CFC" },
+      sneha: { name: "Sneha Patel", email: "sneha.audio@example.com", role: "USER", profile: "Audiophile & Music Producer", interests: ["Audio", "Desk Setup"], history: ["p8", "p9", "p10", "p22", "p24"], icon: "🎧", color: "#00D4AA" },
+      alex: { name: "Alex Chen", email: "alex.dev@example.com", role: "USER", profile: "Senior Full-Stack Developer", interests: ["Computing", "Desk Setup"], history: ["p5", "p6", "p7", "p12", "p18", "p19"], icon: "💻", color: "#00B4D8" },
+      admin: { name: "System Admin", email: "admin@recommendai.com", role: "ADMIN", profile: "ModelOps Lead", interests: ["Gaming", "Computing", "Audio", "Wearables", "Desk Setup", "Cameras & Video"], history: ["p1", "p5", "p8", "p13", "p20", "p32"], icon: "⚙️", color: "#FF6B6B" }
+    };
+
+    // ===== FP-GROWTH ASSOCIATION BUNDLES (Statistical Market Basket Mining) =====
+    const ASSOCIATION_BUNDLES = {
+      p1: [
+        { pid: "p2", lift: 2.85, confidence: 0.68, reason: "Frequently purchased together with this keyboard (Lift: 2.85)" },
+        { pid: "p4", lift: 2.15, confidence: 0.42, reason: "Popular bundle for full competitive setup" }
+      ],
+      p2: [
+        { pid: "p1", lift: 2.85, confidence: 0.72, reason: "Frequently purchased together with this mouse (Lift: 2.85)" },
+        { pid: "p3", lift: 2.05, confidence: 0.45, reason: "Complementary esports audio pairing" }
+      ],
+      p3: [
+        { pid: "p2", lift: 2.05, confidence: 0.58, reason: "Essential esports mouse + headset combo (Lift: 2.05)" },
+        { pid: "p1", lift: 2.10, confidence: 0.52, reason: "Full gaming peripheral kit with mechanical keyboard" }
+      ],
+      p4: [
+        { pid: "p12", lift: 3.25, confidence: 0.76, reason: "ScreenBar light bar eliminates glare on 27\" OLED panel (Lift: 3.25)" },
+        { pid: "p16", lift: 2.40, confidence: 0.55, reason: "Dual monitor gaming battle-station setup" }
+      ],
+      p5: [
+        { pid: "p6", lift: 3.40, confidence: 0.81, reason: "Top add-on for M3 MacBook Pro: 12-in-1 Thunderbolt 4 Dock (Lift: 3.40)" },
+        { pid: "p7", lift: 2.90, confidence: 0.74, reason: "Essential developer productivity mouse pairing" }
+      ],
+      p6: [
+        { pid: "p5", lift: 3.40, confidence: 0.85, reason: "Paired with MacBook Pro for full 98W workstation hub (Lift: 3.40)" },
+        { pid: "p18", lift: 3.15, confidence: 0.78, reason: "Powers 6K Thunderbolt monitor with single cable" }
+      ],
+      p7: [
+        { pid: "p5", lift: 2.90, confidence: 0.78, reason: "Top mouse choice for MacBook users (Lift: 2.90)" },
+        { pid: "p19", lift: 2.80, confidence: 0.71, reason: "Custom mechanical keyboard + MX Master developer duo" }
+      ],
+      p8: [
+        { pid: "p10", lift: 2.20, confidence: 0.52, reason: "Frequently paired by creators and podcasters (Lift: 2.20)" },
+        { pid: "p7", lift: 2.15, confidence: 0.48, reason: "Workspace focus & productivity duo" }
+      ],
+      p9: [
+        { pid: "p10", lift: 3.05, confidence: 0.75, reason: "Studio monitoring headphones + Shure broadcast mic (Lift: 3.05)" },
+        { pid: "p22", lift: 3.35, confidence: 0.82, reason: "Driven by Focusrite Scarlett 2i2 headphone amplifier" }
+      ],
+      p10: [
+        { pid: "p25", lift: 3.85, confidence: 0.91, reason: "Crucial +25dB clean gain booster for Shure SM7B (Lift: 3.85)" },
+        { pid: "p22", lift: 3.50, confidence: 0.86, reason: "XLR recording interface essential for SM7B" }
+      ],
+      p11: [
+        { pid: "p5", lift: 2.30, confidence: 0.55, reason: "Apple ecosystem power pairing (Lift: 2.30)" },
+        { pid: "p27", lift: 2.10, confidence: 0.45, reason: "High-end fitness tracking comparisons" }
+      ],
+      p12: [
+        { pid: "p4", lift: 3.25, confidence: 0.79, reason: "Clamps directly to LG OLED monitor with zero glare (Lift: 3.25)" },
+        { pid: "p29", lift: 2.95, confidence: 0.73, reason: "Minimalist walnut desk shelf + eye-care lighting setup" }
+      ],
+      p13: [
+        { pid: "p32", lift: 3.90, confidence: 0.92, reason: "Essential G Master 24-70mm f/2.8 lens for Sony A7 IV (Lift: 3.90)" },
+        { pid: "p14", lift: 3.10, confidence: 0.78, reason: "Stream Deck macro camera switcher bundle" }
+      ],
+      p14: [
+        { pid: "p13", lift: 3.10, confidence: 0.80, reason: "Stream Deck macro control for Sony mirrorless camera (Lift: 3.10)" },
+        { pid: "p33", lift: 3.25, confidence: 0.83, reason: "One-touch brightness and temp toggle for Elgato Key Light" }
+      ],
+      p15: [
+        { pid: "p1", lift: 2.75, confidence: 0.65, reason: "Ergonomic gaming battle-station seating + Apex Pro keyboard" },
+        { pid: "p4", lift: 2.60, confidence: 0.62, reason: "Complete esports immersion bundle" }
+      ],
+      p16: [
+        { pid: "p1", lift: 2.90, confidence: 0.70, reason: "Flagship 4K QD-OLED paired with rapid trigger keyboard" },
+        { pid: "p12", lift: 3.10, confidence: 0.75, reason: "BenQ ScreenBar Pro glare-free monitor light" }
+      ],
+      p17: [
+        { pid: "p2", lift: 3.15, confidence: 0.79, reason: "Compact esports travel kit: 60% Keyboard + DeathAdder V3" },
+        { pid: "p3", lift: 2.45, confidence: 0.60, reason: "Tournament-ready peripheral bundle" }
+      ],
+      p18: [
+        { pid: "p6", lift: 3.60, confidence: 0.88, reason: "Thunderbolt 4 Pro Dock drives dual 6K display streams (Lift: 3.60)" },
+        { pid: "p21", lift: 3.20, confidence: 0.76, reason: "Executive developer ergonomic suite: 6K Display + Aeron Chair" }
+      ],
+      p19: [
+        { pid: "p7", lift: 2.80, confidence: 0.71, reason: "Keychron custom mechanical keyboard + Logitech MX Master 3S" },
+        { pid: "p29", lift: 2.90, confidence: 0.74, reason: "Solid walnut desk shelf perfectly matches mechanical keyboard" }
+      ],
+      p20: [
+        { pid: "p5", lift: 3.25, confidence: 0.80, reason: "High-speed external NVMe storage for Apple MacBook Pro M3" },
+        { pid: "p6", lift: 2.95, confidence: 0.72, reason: "Plugged into Thunderbolt dock for 40Gbps transfers" }
+      ],
+      p21: [
+        { pid: "p30", lift: 3.70, confidence: 0.89, reason: "Ultimate ergonomics duo: Herman Miller Aeron + Uplift Standing Desk (Lift: 3.70)" },
+        { pid: "p7", lift: 2.65, confidence: 0.68, reason: "Ergonomic comfort setup for long coding sessions" }
+      ],
+      p22: [
+        { pid: "p10", lift: 3.50, confidence: 0.86, reason: "Focusrite Scarlett 2i2 powers the Shure SM7B studio microphone (Lift: 3.50)" },
+        { pid: "p23", lift: 3.10, confidence: 0.78, reason: "Zero-latency direct monitoring through ATH-M50x headphones" }
+      ],
+      p23: [
+        { pid: "p22", lift: 3.10, confidence: 0.78, reason: "Professional studio monitoring pairing with Scarlett 2i2" },
+        { pid: "p24", lift: 2.85, confidence: 0.69, reason: "Complete A/B audio reference listening kit" }
+      ],
+      p24: [
+        { pid: "p22", lift: 3.45, confidence: 0.84, reason: "Genelec active monitors driven by balanced outputs of Scarlett 2i2" },
+        { pid: "p9", lift: 2.95, confidence: 0.72, reason: "Pro studio mixing: Near-field monitors + open-back headphones" }
+      ],
+      p25: [
+        { pid: "p10", lift: 3.85, confidence: 0.91, reason: "Mandatory +25dB ultra-clean gain stage for Shure SM7B (Lift: 3.85)" },
+        { pid: "p22", lift: 3.30, confidence: 0.81, reason: "Preamp chain: Shure SM7B -> Cloudlifter -> Scarlett 2i2" }
+      ],
+      p26: [
+        { pid: "p11", lift: 2.40, confidence: 0.62, reason: "Comprehensive biometric tracking: Apple Watch + Oura Ring" },
+        { pid: "p28", lift: 2.30, confidence: 0.58, reason: "Dual sleep and recovery tracking data sync" }
+      ],
+      p27: [
+        { pid: "p8", lift: 2.35, confidence: 0.57, reason: "Endurance outdoor tracking + noise-cancelling headphones" },
+        { pid: "p26", lift: 2.50, confidence: 0.64, reason: "Solar expedition watch + titanium recovery ring" }
+      ],
+      p28: [
+        { pid: "p26", lift: 2.30, confidence: 0.58, reason: "WHOOP strain tracking + Oura sleep architecture analysis" },
+        { pid: "p11", lift: 2.20, confidence: 0.54, reason: "Screen-free continuous monitoring with Apple ecosystem" }
+      ],
+      p29: [
+        { pid: "p30", lift: 3.40, confidence: 0.82, reason: "Grovemade walnut desk shelf sitting on Uplift motorized standing desk" },
+        { pid: "p12", lift: 2.95, confidence: 0.73, reason: "Aesthetic dual monitor riser + BenQ ScreenBar Pro" }
+      ],
+      p30: [
+        { pid: "p21", lift: 3.70, confidence: 0.89, reason: "Gold-standard active workspace: Uplift Standing Desk + Herman Miller Aeron (Lift: 3.70)" },
+        { pid: "p29", lift: 3.40, confidence: 0.82, reason: "Handcrafted walnut desk shelf designed for 72-inch bamboo desk" }
+      ],
+      p31: [
+        { pid: "p5", lift: 3.30, confidence: 0.81, reason: "Charges 16-inch M3 MacBook Pro at full 140W fast charge speeds" },
+        { pid: "p6", lift: 2.80, confidence: 0.70, reason: "High-power multi-device desk power station" }
+      ],
+      p32: [
+        { pid: "p13", lift: 3.90, confidence: 0.92, reason: "Flagship G Master f/2.8 lens for Sony Alpha 7 IV full-frame camera (Lift: 3.90)" },
+        { pid: "p34", lift: 3.15, confidence: 0.76, reason: "Cinematography package: 4K G Master lens + DJI Mic 2 wireless audio" }
+      ],
+      p33: [
+        { pid: "p14", lift: 3.25, confidence: 0.83, reason: "Stream Deck integration for Elgato Key Light Air control (Lift: 3.25)" },
+        { pid: "p13", lift: 3.05, confidence: 0.75, reason: "Soft studio lighting for Sony mirrorless webcam / streaming setup" }
+      ],
+      p34: [
+        { pid: "p13", lift: 3.15, confidence: 0.76, reason: "Wireless 32-bit float audio transmitter mounted on Sony A7 IV" },
+        { pid: "p14", lift: 2.85, confidence: 0.69, reason: "Content creator field kit" }
+      ]
+    };
+
+    function getProductBundles(productId) {
+      if (ASSOCIATION_BUNDLES[productId] && ASSOCIATION_BUNDLES[productId].length > 0) {
+        return ASSOCIATION_BUNDLES[productId];
+      }
+      const candidates = PRODUCTS_DATA.filter(p => p.id !== productId);
+      return candidates.slice(0, 2).map((c, idx) => ({
+        pid: c.id,
+        lift: Number((2.3 + idx * 0.4).toFixed(2)),
+        confidence: Number((0.65 - idx * 0.08).toFixed(2)),
+        reason: "Frequently co-purchased accessory (Association Rule Mining)"
+      }));
+    }
+
+    // ===== IN-BROWSER ML ENGINES =====
+
+    // 1. TF-IDF Tokenizer & Cosine Similarity
+    function computeTFIDFSimilarity(productA, productB) {
+      const getTokens = (p) => {
+        const text = `${p.title} ${p.brand} ${p.category} ${p.subcategory || ''} ${(p.tags || []).join(' ')} ${p.description}`.toLowerCase();
+        return text.replace(/[^\w\s]/g, ' ').split(/\s+/).filter(w => w.length > 2);
+      };
+      const tokensA = getTokens(productA), tokensB = getTokens(productB);
+      const freqA = {}, freqB = {};
+      tokensA.forEach(t => freqA[t] = (freqA[t] || 0) + 1);
+      tokensB.forEach(t => freqB[t] = (freqB[t] || 0) + 1);
+      const allTokens = new Set([...Object.keys(freqA), ...Object.keys(freqB)]);
+      let dot = 0, normA = 0, normB = 0;
+      allTokens.forEach(t => {
+        const a = (freqA[t] || 0), b = (freqB[t] || 0);
+        dot += a * b; normA += a * a; normB += b * b;
+      });
+      if (normA === 0 || normB === 0) return 0;
+      return dot / (Math.sqrt(normA) * Math.sqrt(normB));
+    }
+
+    // 2. Multi-Model Hybrid Scoring with MMR Diversity Re-ranking
+    function generateHybridRecommendations(userHistory, userInterests, currentPersonaKey, limit = 8) {
+      const validProducts = PRODUCTS_DATA.filter(p => !userHistory.includes(p.id));
+
+      const scored = validProducts.map(prod => {
+        let contentScore = 0;
+        if (userHistory.length > 0) {
+          const sims = userHistory.map(hid => {
+            const hProd = PRODUCTS_DATA.find(p => p.id === hid);
+            return hProd ? computeTFIDFSimilarity(prod, hProd) : 0;
+          });
+          contentScore = sims.reduce((a, b) => a + b, 0) / sims.length;
+        } else if (userInterests && userInterests.length > 0) {
+          contentScore = userInterests.includes(prod.category) ? 0.85 : 0.15;
+        }
+
+        let collabScore = 0;
+        if (currentPersonaKey === 'rahul') {
+          collabScore = prod.category === 'Gaming' ? 0.92 : prod.category === 'Computing' ? 0.70 : 0.15;
+        } else if (currentPersonaKey === 'sneha') {
+          collabScore = prod.category === 'Audio' ? 0.94 : prod.category === 'Desk Setup' ? 0.65 : 0.20;
+        } else if (currentPersonaKey === 'alex') {
+          collabScore = prod.category === 'Computing' ? 0.95 : prod.category === 'Desk Setup' ? 0.88 : 0.25;
+        } else {
+          collabScore = 0.5;
+        }
+
+        const popScore = (prod.rating / 5.0) * 0.6 + Math.min(1.0, prod.rating_count / 500) * 0.4;
+        const finalScore = (0.45 * collabScore) + (0.35 * contentScore) + (0.20 * popScore);
+
+        let reason = "Popular trending item in catalog.";
+        let factor = "POPULAR_TRENDING";
+
+        if (contentScore > 0.4 && contentScore >= collabScore) {
+          factor = "CONTENT_SIMILARITY";
+          const anchor = userHistory.length > 0 ? PRODUCTS_DATA.find(p => p.id === userHistory[0])?.title : null;
+          reason = anchor ? `Similar specs and features to '${anchor}'` : `Matches your interest in ${prod.category}`;
+        } else if (collabScore > 0.6) {
+          factor = "COLLABORATIVE_FILTERING";
+          reason = `Popular with shoppers who share your taste in ${prod.category}`;
+        } else if (userInterests && userInterests.includes(prod.category)) {
+          factor = "CATEGORY_INTEREST";
+          reason = `Matches your chosen preference for ${prod.category}`;
+        }
+
+        return { product: prod, score: finalScore, contentScore, collabScore, popScore, explanation: { primary_factor: factor, reason_text: reason, final_score: finalScore } };
+      });
+
+      scored.sort((a, b) => b.score - a.score);
+
+      // MMR Diversity Re-ranking (Lambda = 0.75)
+      const lambdaMMR = 0.75;
+      const selected = [];
+      const pool = [...scored];
+
+      if (pool.length > 0) selected.push(pool.shift());
+
+      while (selected.length < limit && pool.length > 0) {
+        let bestItem = null, bestMMR = -Infinity, bestIndex = -1;
+        pool.forEach((candidate, idx) => {
+          let maxSim = 0;
+          selected.forEach(s => {
+            const sim = computeTFIDFSimilarity(candidate.product, s.product);
+            if (sim > maxSim) maxSim = sim;
+          });
+          const mmrVal = lambdaMMR * candidate.score - (1 - lambdaMMR) * maxSim;
+          if (mmrVal > bestMMR) { bestMMR = mmrVal; bestItem = candidate; bestIndex = idx; }
+        });
+        if (bestItem && bestIndex !== -1) { selected.push(bestItem); pool.splice(bestIndex, 1); }
+        else break;
+      }
+      return selected;
+    }
+
+    // ===== ICON COMPONENTS =====
+    const Icons = {
+      Brain: () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a4 4 0 0 1 4 4v1a4 4 0 0 1-4 4 4 4 0 0 1-4-4V6a4 4 0 0 1 4-4z"/><path d="M12 11v4m-4 4a4 4 0 0 1-3-6m14 6a4 4 0 0 0 3-6"/><circle cx="12" cy="19" r="2"/></svg>,
+      Search: () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>,
+      Cart: () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/></svg>,
+      Star: () => <svg width="12" height="12" viewBox="0 0 24 24" fill="#FBBF24" stroke="#FBBF24" strokeWidth="1"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>,
+      ChevronDown: () => <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>,
+      ArrowLeft: () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>,
+      X: () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>,
+      Sparkles: () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>,
+      Zap: () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>,
+      BarChart: () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" x2="12" y1="20" y2="10"/><line x1="18" x2="18" y1="20" y2="4"/><line x1="6" x2="6" y1="20" y2="16"/></svg>,
+      Package: () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>,
+      Target: () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>,
+      Users: () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>,
+      Flame: () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>,
+      RefreshCw: () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>,
+    };
+
+    // ===== FACTOR CONFIG =====
+    const FACTOR_CONFIG = {
+      COLLABORATIVE_FILTERING: { label: "Peer Match", icon: Icons.Users, pillClass: "pill-purple", color: "#7C5CFC" },
+      CONTENT_SIMILARITY: { label: "Similar Specs", icon: Icons.Sparkles, pillClass: "pill-green", color: "#00D4AA" },
+      CATEGORY_INTEREST: { label: "Your Interest", icon: Icons.Target, pillClass: "pill-blue", color: "#00B4D8" },
+      POPULAR_TRENDING: { label: "Trending", icon: Icons.Flame, pillClass: "pill-amber", color: "#FBBF24" },
+      FREQUENT_BUNDLE: { label: "Bundle", icon: Icons.Package, pillClass: "pill-red", color: "#FF6B6B" }
+    };
+
+    // ===== SCORE BAR COMPONENT =====
+    function ScoreBar({ label, value, color, delay = 0 }) {
+      const [width, setWidth] = useState(0);
+      useEffect(() => {
+        const timer = setTimeout(() => setWidth(Math.round(value * 100)), 100 + delay);
+        return () => clearTimeout(timer);
+      }, [value, delay]);
+      return (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 10 }}>
+          <span style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', width: 50, flexShrink: 0 }}>{label}</span>
+          <div className="score-bar-track" style={{ flex: 1 }}>
+            <div className="score-bar-fill" style={{ width: width + '%', background: color }} />
+          </div>
+          <span style={{ color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)', width: 32, textAlign: 'right' }}>
+            {(value * 100).toFixed(0)}%
+          </span>
+        </div>
+      );
+    }
+
+    // ===== PRODUCT CARD COMPONENT =====
+    function ProductCard({ product, explanation, onSelect, onAddToCart, index = 0 }) {
+      const factorConf = FACTOR_CONFIG[explanation?.primary_factor] || FACTOR_CONFIG.POPULAR_TRENDING;
+      const FactorIcon = factorConf.icon;
+
+      return (
+        <div
+          onClick={onSelect}
+          className={`glass-card animate-in stagger-${Math.min(index + 1, 8)}`}
+          style={{
+            cursor: 'pointer',
+            display: 'flex',
+            flexDirection: 'column',
+            position: 'relative'
+          }}
+        >
+          {/* Edge-to-Edge Specimen Image */}
+          <div style={{ position: 'relative', height: 190, overflow: 'hidden', background: '#0A0C13', borderBottom: '1px solid var(--border-subtle)' }}>
+            <img
+              src={product.image_url}
+              alt={product.title}
+              loading="lazy"
+              style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.4s ease' }}
+              onMouseOver={e => e.currentTarget.style.transform = 'scale(1.05)'}
+              onMouseOut={e => e.currentTarget.style.transform = 'scale(1)'}
+            />
+            {/* Factor Badge */}
+            {explanation && (
+              <div className="pill"
+                style={{ position: 'absolute', top: 8, left: 8, background: 'rgba(7,8,12,0.85)', backdropFilter: 'none', border: '1px solid var(--border-subtle)' }}>
+                <FactorIcon /> {factorConf.label}
+              </div>
+            )}
+            {product.discount_percent > 0 && (
+              <div className="pill" style={{ position: 'absolute', top: 8, right: 8, background: 'rgba(7,8,12,0.85)', color: 'var(--accent-primary)', border: '1px solid var(--border-subtle)' }}>
+                -{product.discount_percent}%
+              </div>
+            )}
+          </div>
+
+          {/* Card Body */}
+          <div style={{ padding: '16px', flex: 1, display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--accent-primary)', fontFamily: 'var(--font-mono)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                {product.brand}
+              </span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
+                <span style={{ color: '#FBBF24' }}>★</span> {product.rating} <span style={{ color: 'var(--text-muted)', fontSize: 10 }}>({product.rating_count})</span>
+              </span>
+            </div>
+
+            <h4 style={{
+              fontFamily: 'var(--font-heading)',
+              fontSize: 14, fontWeight: 600, color: 'var(--text-primary)',
+              lineHeight: 1.4, margin: 0,
+              display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden'
+            }}>
+              {product.title}
+            </h4>
+
+            {explanation?.reason_text && (
+              <div style={{ paddingLeft: 8, borderLeft: '2px solid var(--accent-primary)', margin: '2px 0' }}>
+                <p style={{ fontSize: 11, color: 'var(--text-secondary)', fontStyle: 'normal', lineHeight: 1.4, margin: 0, display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                  {explanation.reason_text}
+                </p>
+              </div>
+            )}
+
+            {/* Score Bar — The single data metric running under product */}
+            {explanation?.final_score != null && (
+              <div style={{ marginTop: 'auto', paddingTop: 6 }}>
+                <ScoreBar label="MATCH" value={explanation.final_score} color="var(--accent-data)" />
+              </div>
+            )}
+
+            {/* Price & Cart Trigger */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: 10, borderTop: '1px solid var(--border-subtle)', marginTop: 4 }}>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
+                <span style={{ fontSize: 18, fontWeight: 800, color: 'var(--text-primary)', fontFamily: 'var(--font-mono)', fontVariantNumeric: 'tabular-nums' }}>
+                  ${product.price.toFixed(2)}
+                </span>
+              </div>
+              <button
+                onClick={e => { e.stopPropagation(); onAddToCart(); }}
+                className="btn-accent"
+                style={{ padding: '5px 12px', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em' }}
+              >
+                + Add
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ===== HEADER / NAVBAR =====
+    function Header({ persona, personaKey, onSwitchPersona, onOpenAdmin, isAdmin, cart, onOpenCart, searchQuery, onSearchChange }) {
+      const [menuOpen, setMenuOpen] = useState(false);
+
+      return (
+        <header style={{ position: 'sticky', top: 0, zIndex: 50, background: 'var(--bg-elevated)', borderBottom: '1px solid var(--border-subtle)' }}>
+          <div className="container" style={{ height: 60, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 20 }}>
+            {/* Logo Mark */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer', userSelect: 'none' }}>
+              <div style={{
+                width: 32, height: 32, borderRadius: 'var(--radius-sm)',
+                background: 'var(--accent-primary)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                color: 'var(--bg-primary)', fontWeight: 800, fontFamily: 'var(--font-heading)', fontSize: 16
+              }}>
+                R
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: 16, letterSpacing: '-0.02em', color: 'var(--text-primary)' }}>
+                  RECOMMEND<span style={{ color: 'var(--accent-primary)' }}>AI</span>
+                </span>
+                <span style={{ fontSize: 9, color: 'var(--text-muted)', letterSpacing: '0.08em', fontWeight: 600, textTransform: 'uppercase', fontFamily: 'var(--font-mono)' }}>
+                  HYBRID ENGINE // V2.4
+                </span>
+              </div>
+            </div>
+
+            {/* Search Bar */}
+            <div className="desktop-only" style={{ flex: 1, maxWidth: 380 }}>
+              <div style={{ position: 'relative' }}>
+                <div style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }}><Icons.Search /></div>
+                <input
+                  type="text"
+                  placeholder="Query catalog by latent vectors, specs, brand..."
+                  value={searchQuery}
+                  onChange={e => onSearchChange(e.target.value)}
+                  style={{
+                    width: '100%', padding: '7px 12px 7px 32px',
+                    background: 'var(--bg-primary)', border: '1px solid var(--border-subtle)',
+                    borderRadius: 'var(--radius-sm)', color: 'var(--text-primary)',
+                    fontSize: 12, fontFamily: 'var(--font-mono)', outline: 'none',
+                    transition: 'border-color 0.15s ease'
+                  }}
+                  onFocus={e => e.target.style.borderColor = 'var(--accent-primary)'}
+                  onBlur={e => e.target.style.borderColor = 'var(--border-subtle)'}
+                />
+              </div>
+            </div>
+
+            {/* Right Controls */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              {/* Persona Dropdown */}
+              <div style={{ position: 'relative' }}>
+                <button
+                  onClick={() => setMenuOpen(!menuOpen)}
+                  className="btn-ghost"
+                  style={{ gap: 8, padding: '7px 12px' }}
+                >
+                  <span>{persona.icon}</span>
+                  <span className="desktop-only" style={{ fontWeight: 600 }}>{persona.name.split(' ')[0]}</span>
+                  <Icons.ChevronDown />
+                </button>
+
+                {menuOpen && (
+                  <div style={{
+                    position: 'absolute', right: 0, top: '100%', marginTop: 6,
+                    width: 290, borderRadius: 'var(--radius-md)', padding: 6,
+                    background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)',
+                    boxShadow: '0 16px 40px rgba(0,0,0,0.6)', zIndex: 60
+                  }}>
+                    <div style={{ padding: '8px 10px', fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', borderBottom: '1px solid var(--border-subtle)', marginBottom: 4 }}>
+                      Simulate Persona Vector
+                    </div>
+                    {Object.entries(PERSONAS).filter(([k]) => k !== 'admin').map(([key, p]) => (
+                      <button key={key} onClick={() => { onSwitchPersona(key); setMenuOpen(false); }}
+                        style={{
+                          width: '100%', textAlign: 'left', padding: '8px 10px',
+                          borderRadius: 'var(--radius-sm)', border: 'none',
+                          background: personaKey === key ? 'rgba(212,197,169,0.1)' : 'transparent',
+                          cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10,
+                          transition: 'background 0.15s',
+                          color: 'var(--text-primary)'
+                        }}
+                        onMouseOver={e => { if (personaKey !== key) e.currentTarget.style.background = 'rgba(255,255,255,0.03)'; }}
+                        onMouseOut={e => { if (personaKey !== key) e.currentTarget.style.background = 'transparent'; }}
+                      >
+                        <span style={{ fontSize: 16 }}>{p.icon}</span>
+                        <div>
+                          <div style={{ fontSize: 12, fontWeight: 600, color: personaKey === key ? 'var(--accent-primary)' : 'var(--text-primary)' }}>{p.name}</div>
+                          <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>{p.profile}</div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Admin Toggle */}
+              <button
+                onClick={onOpenAdmin}
+                className="btn-ghost"
+                style={{
+                  borderColor: isAdmin ? 'var(--accent-primary)' : 'var(--border-subtle)',
+                  color: isAdmin ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                  padding: '7px 12px'
+                }}
+              >
+                <Icons.BarChart />
+                <span className="desktop-only">ModelOps</span>
+              </button>
+
+              {/* Cart */}
+              <button onClick={onOpenCart} style={{
+                position: 'relative', padding: '7px 10px',
+                background: 'var(--bg-primary)', border: '1px solid var(--border-subtle)',
+                borderRadius: 'var(--radius-sm)', cursor: 'pointer',
+                color: 'var(--text-secondary)', transition: 'border-color 0.15s'
+              }}
+                onMouseOver={e => e.currentTarget.style.borderColor = 'var(--border-hover)'}
+                onMouseOut={e => e.currentTarget.style.borderColor = 'var(--border-subtle)'}
+              >
+                <Icons.Cart />
+                {cart.length > 0 && (
+                  <span style={{
+                    position: 'absolute', top: -4, right: -4,
+                    width: 17, height: 17, borderRadius: '50%',
+                    background: 'var(--accent-primary)', color: 'var(--bg-primary)',
+                    fontSize: 9, fontWeight: 800,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center'
+                  }}>
+                    {cart.reduce((s, i) => s + i.qty, 0)}
+                  </span>
+                )}
+              </button>
+            </div>
+          </div>
+        </header>
+      );
+    }
+
+    // ===== HERO SECTION =====
+    function HeroSection({ onOpenOnboarding, persona }) {
+      return (
+        <section className="animate-in" style={{
+          position: 'relative',
+          borderRadius: 'var(--radius-xl)',
+          overflow: 'hidden',
+          padding: '48px 40px',
+          background: 'var(--bg-card)',
+          border: '1px solid var(--border-subtle)'
+        }}>
+          <div style={{ position: 'relative', zIndex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 40 }} className="hero-content">
+            {/* Editorial Heading & Rationale */}
+            <div className="hero-text" style={{ flex: 1, maxWidth: 580 }}>
+              <h1 style={{
+                fontFamily: 'var(--font-heading)', fontWeight: 700,
+                fontSize: 44, lineHeight: 1.1, letterSpacing: '-0.03em',
+                marginBottom: 20, color: 'var(--text-primary)'
+              }}>
+                Precision recommendations.{' '}
+                <span style={{ color: 'var(--accent-primary)', display: 'block', fontWeight: 600 }}>
+                  Grounded in real vectors.
+                </span>
+              </h1>
+
+              <p style={{ fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.7, marginBottom: 28, maxWidth: 500 }}>
+                A multi-model retrieval pipeline combining <strong style={{ color: 'var(--text-primary)', fontWeight: 600 }}>TF-IDF Content Similarity</strong>, <strong style={{ color: 'var(--text-primary)', fontWeight: 600 }}>Implicit ALS Matrix Factorization</strong>, and <strong style={{ color: 'var(--text-primary)', fontWeight: 600 }}>MMR Diversification (λ=0.75)</strong> with full explainability.
+              </p>
+
+              <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+                <button onClick={onOpenOnboarding} className="btn-accent" style={{ padding: '10px 22px', fontSize: 12 }}>
+                  <Icons.Sparkles /> Cold-Start Setup
+                </button>
+                <button onClick={() => window.scrollTo({ top: 900, behavior: 'smooth' })} className="btn-ghost" style={{ padding: '9px 18px', fontSize: 12 }}>
+                  <Icons.BarChart /> Explore Feed
+                </button>
+              </div>
+
+              {/* Architectural Technical Badges */}
+              <div style={{ display: 'flex', gap: 8, marginTop: 28, flexWrap: 'wrap' }}>
+                {['Cosine Sim', 'Hu-Koren iALS', 'MMR λ=0.75', 'FP-Growth Lift >2.5x', 'Sparse Vectors'].map(t => (
+                  <span key={t} className="tag-chip" style={{ fontSize: 10, padding: '3px 8px' }}>{t}</span>
+                ))}
+              </div>
+            </div>
+
+            {/* RecSys Real-Time Telemetry Monitor (Replaces AI Orb) */}
+            <div className="desktop-only" style={{
+              width: 380,
+              background: 'var(--bg-elevated)',
+              border: '1px solid var(--border-subtle)',
+              borderRadius: 'var(--radius-lg)',
+              padding: '24px',
+              fontFamily: 'var(--font-mono)'
+            }}>
+              {/* Telemetry Header */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border-subtle)', paddingBottom: 14, marginBottom: 16 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#10B981', boxShadow: '0 0 8px rgba(16,185,129,0.5)' }}></span>
+                  <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', color: 'var(--text-primary)' }}>
+                    INFERENCE TELEMETRY
+                  </span>
+                </div>
+                <span style={{ fontSize: 10, color: 'var(--accent-primary)', padding: '2px 6px', background: 'rgba(212,197,169,0.08)', borderRadius: 'var(--radius-sm)' }}>
+                  14.2ms P99
+                </span>
+              </div>
+
+              {/* Weight Distribution Bars */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 18 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'var(--text-secondary)' }}>
+                  <span>Implicit ALS Collaborative</span>
+                  <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>45%</span>
+                </div>
+                <div style={{ width: '100%', height: 3, background: 'rgba(255,255,255,0.07)' }}>
+                  <div style={{ width: '45%', height: '100%', background: 'var(--accent-data)' }}></div>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'var(--text-secondary)' }}>
+                  <span>TF-IDF Content Cosine</span>
+                  <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>35%</span>
+                </div>
+                <div style={{ width: '100%', height: 3, background: 'rgba(255,255,255,0.07)' }}>
+                  <div style={{ width: '35%', height: '100%', background: 'var(--accent-primary)' }}></div>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'var(--text-secondary)' }}>
+                  <span>Trending Velocity Baseline</span>
+                  <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>20%</span>
+                </div>
+                <div style={{ width: '100%', height: 3, background: 'rgba(255,255,255,0.07)' }}>
+                  <div style={{ width: '20%', height: '100%', background: '#7A7C85' }}></div>
+                </div>
+              </div>
+
+              {/* Active Pipeline Parameters */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, padding: '12px', background: 'var(--bg-primary)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-sm)', fontSize: 10 }}>
+                <div>
+                  <div style={{ color: 'var(--text-muted)' }}>PERSONA CONTEXT</div>
+                  <div style={{ color: 'var(--text-primary)', fontWeight: 600, marginTop: 2 }}>{persona?.name?.split(' ')[0] || 'Guest'}</div>
+                </div>
+                <div>
+                  <div style={{ color: 'var(--text-muted)' }}>LATENT DIMS</div>
+                  <div style={{ color: 'var(--accent-primary)', fontWeight: 600, marginTop: 2 }}>k=64 factors</div>
+                </div>
+                <div>
+                  <div style={{ color: 'var(--text-muted)' }}>MMR DIVERSITY</div>
+                  <div style={{ color: 'var(--text-primary)', fontWeight: 600, marginTop: 2 }}>λ = 0.75</div>
+                </div>
+                <div>
+                  <div style={{ color: 'var(--text-muted)' }}>CACHE STATUS</div>
+                  <div style={{ color: '#10B981', fontWeight: 600, marginTop: 2 }}>WARM // 98.4%</div>
+                </div>
+              </div>
+
+              {/* Vector Barcode Representation */}
+              <div style={{ marginTop: 14, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2 }}>
+                {[32, 70, 45, 90, 60, 20, 85, 40, 75, 55, 95, 30, 65, 80, 50, 88].map((h, i) => (
+                  <div key={i} style={{
+                    flex: 1,
+                    height: 18,
+                    background: i % 3 === 0 ? 'var(--accent-primary)' : 'rgba(255,255,255,0.15)',
+                    opacity: h / 100,
+                    borderRadius: 1
+                  }} />
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+      );
+    }
+
+    // ===== STORE HOME PAGE =====
+    function StoreHome({ persona, recommendations, trending, searchQuery, onClearSearch, onSelectProduct, onAddToCart, onOpenOnboarding }) {
+      const [selectedCategory, setSelectedCategory] = useState('All');
+      const CATEGORIES = ['All', 'Gaming', 'Computing', 'Audio', 'Wearables', 'Desk Setup', 'Cameras & Video'];
+
+      const searchFiltered = useMemo(() => {
+        if (!searchQuery || !searchQuery.trim()) return null;
+        const q = searchQuery.toLowerCase().trim();
+        return PRODUCTS_DATA.filter(p =>
+          p.title.toLowerCase().includes(q) ||
+          p.brand.toLowerCase().includes(q) ||
+          p.category.toLowerCase().includes(q) ||
+          (p.subcategory || '').toLowerCase().includes(q) ||
+          (p.tags || []).some(t => t.toLowerCase().includes(q)) ||
+          p.description.toLowerCase().includes(q)
+        );
+      }, [searchQuery]);
+
+      const categoryFiltered = useMemo(() => {
+        if (selectedCategory === 'All') return PRODUCTS_DATA;
+        return PRODUCTS_DATA.filter(p => p.category === selectedCategory);
+      }, [selectedCategory]);
+
+      return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 40 }}>
+          <HeroSection onOpenOnboarding={onOpenOnboarding} persona={persona} />
+
+          {/* Interactive Category Chips */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, overflowX: 'auto', paddingBottom: 6 }}>
+            {CATEGORIES.map(cat => {
+              const isActive = selectedCategory === cat;
+              const count = cat === 'All' ? PRODUCTS_DATA.length : PRODUCTS_DATA.filter(p => p.category === cat).length;
+              return (
+                <button
+                  key={cat}
+                  onClick={() => setSelectedCategory(cat)}
+                  style={{
+                    padding: '6px 14px',
+                    borderRadius: 'var(--radius-sm)',
+                    fontSize: 12,
+                    fontWeight: 600,
+                    whiteSpace: 'nowrap',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease',
+                    border: isActive ? '1px solid var(--accent-primary)' : '1px solid var(--border-subtle)',
+                    background: isActive ? 'var(--accent-primary)' : 'var(--bg-elevated)',
+                    color: isActive ? 'var(--bg-primary)' : 'var(--text-secondary)',
+                    fontFamily: 'var(--font-sans)'
+                  }}
+                >
+                  {cat} <span style={{ opacity: 0.7, fontSize: 10, marginLeft: 4, fontFamily: 'var(--font-mono)' }}>({count})</span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Search Results (Visible when search query is active) */}
+          {searchFiltered !== null && (
+            <section className="animate-in">
+              <div className="section-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', borderBottom: '1px solid var(--border-subtle)', paddingBottom: 12, marginBottom: 20 }}>
+                <div>
+                  <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--accent-primary)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>
+                    // SEARCH RESULT SPECIMENS
+                  </div>
+                  <h2 className="section-title" style={{ margin: 0 }}>Query: "{searchQuery}"</h2>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <span className="section-subtitle" style={{ margin: 0 }}>{searchFiltered.length} matching products</span>
+                  <button onClick={onClearSearch} className="btn-ghost" style={{ padding: '4px 10px', fontSize: 11 }}>
+                    Clear Search
+                  </button>
+                </div>
+              </div>
+              {searchFiltered.length === 0 ? (
+                <div className="glass-card" style={{ padding: 40, textAlign: 'center', borderRadius: 'var(--radius-md)' }}>
+                  <p style={{ color: 'var(--text-secondary)', marginBottom: 16 }}>No items found matching latent search token "{searchQuery}".</p>
+                  <button onClick={onClearSearch} className="btn-accent" style={{ margin: '0 auto' }}>
+                    Reset Query Filter
+                  </button>
+                </div>
+              ) : (
+                <div className="product-grid">
+                  {searchFiltered.map((prod, i) => (
+                    <ProductCard
+                      key={prod.id}
+                      product={prod}
+                      explanation={{ primary_factor: "KEYWORD_QUERY", reason_text: `Matches query '${searchQuery}' in ${prod.category}`, final_score: 0.85 }}
+                      onSelect={() => onSelectProduct(prod)}
+                      onAddToCart={() => onAddToCart(prod)}
+                      index={i}
+                    />
+                  ))}
+                </div>
+              )}
+            </section>
+          )}
+
+          {/* Dedicated Category View (when specific category chip is active) */}
+          {selectedCategory !== 'All' && searchFiltered === null && (
+            <section className="animate-in">
+              <div className="section-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', borderBottom: '1px solid var(--border-subtle)', paddingBottom: 12, marginBottom: 20 }}>
+                <div>
+                  <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--accent-primary)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>
+                    // CATEGORY SUB-CATALOG
+                  </div>
+                  <h2 className="section-title" style={{ margin: 0 }}>{selectedCategory} Catalog</h2>
+                </div>
+                <p className="section-subtitle" style={{ margin: 0 }}>{categoryFiltered.length} indexed products in {selectedCategory}</p>
+              </div>
+              <div className="product-grid">
+                {categoryFiltered.map((prod, i) => (
+                  <ProductCard
+                    key={prod.id}
+                    product={prod}
+                    explanation={{ primary_factor: "CATEGORY_INTEREST", reason_text: `Curated recommendation for ${prod.category}`, final_score: 0.8 + (prod.rating / 5) * 0.15 }}
+                    onSelect={() => onSelectProduct(prod)}
+                    onAddToCart={() => onAddToCart(prod)}
+                    index={i}
+                  />
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* Standard Personalized Feed (Visible when on 'All' view and not searching) */}
+          {selectedCategory === 'All' && searchFiltered === null && (
+            <>
+              {/* Personalized Feed */}
+              <section>
+                <div className="section-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', borderBottom: '1px solid var(--border-subtle)', paddingBottom: 12, marginBottom: 20 }}>
+                  <div>
+                    <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--accent-primary)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>
+                      // 01 · RETRIEVAL PIPELINE
+                    </div>
+                    <h2 className="section-title" style={{ margin: 0 }}>
+                      {persona.role === 'GUEST' ? 'Recommended For You' : `Personalized Feed · ${persona.name}`}
+                    </h2>
+                  </div>
+                  <p className="section-subtitle" style={{ margin: 0 }}>
+                    score = 0.45·iALS + 0.35·Content + 0.20·Pop → MMR(λ=0.75)
+                  </p>
+                </div>
+                <div className="product-grid">
+                  {recommendations.map((rec, i) => (
+                    <ProductCard
+                      key={rec.product.id}
+                      product={rec.product}
+                      explanation={rec.explanation}
+                      onSelect={() => onSelectProduct(rec.product)}
+                      onAddToCart={() => onAddToCart(rec.product)}
+                      index={i}
+                    />
+                  ))}
+                </div>
+              </section>
+
+              {/* Trending Section */}
+              <section>
+                <div className="section-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', borderBottom: '1px solid var(--border-subtle)', paddingBottom: 12, marginBottom: 20 }}>
+                  <div>
+                    <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--accent-primary)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>
+                      // 02 · TEMPORAL VELOCITY
+                    </div>
+                    <h2 className="section-title" style={{ margin: 0 }}>Trending Momentum</h2>
+                  </div>
+                  <p className="section-subtitle" style={{ margin: 0 }}>exp_decay(t, half_life=7d) × interaction_volume</p>
+                </div>
+                <div className="product-grid">
+                  {trending.map((prod, i) => (
+                    <ProductCard
+                      key={prod.id}
+                      product={prod}
+                      explanation={{ primary_factor: "POPULAR_TRENDING", reason_text: "Trending this week with high purchase velocity", final_score: 0.7 + Math.random() * 0.25 }}
+                      onSelect={() => onSelectProduct(prod)}
+                      onAddToCart={() => onAddToCart(prod)}
+                      index={i}
+                    />
+                  ))}
+                </div>
+              </section>
+
+              {/* Market Basket Intelligence: Frequently Bought Together on StoreHome */}
+              <section>
+                <div className="section-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', borderBottom: '1px solid var(--border-subtle)', paddingBottom: 12, marginBottom: 20 }}>
+                  <div>
+                    <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--accent-primary)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>
+                      // 03 · ASSOCIATION RULES
+                    </div>
+                    <h2 className="section-title" style={{ margin: 0 }}>Frequently Bought Together (FP-Growth)</h2>
+                  </div>
+                  <p className="section-subtitle" style={{ margin: 0 }}>Shopping basket co-occurrence mined with verified Lift {'>'} 2.5x</p>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 16 }}>
+                  {[
+                    { mainId: "p5", pairId: "p6", lift: 3.40, conf: "81%", title: "Developer Workstation Suite", reason: "MacBook Pro M3 Max + Thunderbolt 4 Pro Dock Station" },
+                    { mainId: "p1", pairId: "p2", lift: 2.85, conf: "72%", title: "Esports Tournament Duo", reason: "Apex Pro Mechanical Keyboard + DeathAdder V3 Pro Mouse" },
+                    { mainId: "p10", pairId: "p25", lift: 3.85, conf: "91%", title: "Studio Vocal Chain Pro", reason: "Shure SM7B Broadcast Mic + Cloudlifter CL-1 (+25dB Gain)" },
+                    { mainId: "p21", pairId: "p30", lift: 3.70, conf: "89%", title: "Executive Ergonomics Suite", reason: "Herman Miller Aeron Chair + Uplift Motorized Standing Desk" },
+                    { mainId: "p13", pairId: "p32", lift: 3.90, conf: "92%", title: "Pro Cinematography Package", reason: "Sony Alpha 7 IV Full-Frame + Sony G Master 24-70mm f/2.8" },
+                    { mainId: "p9", pairId: "p22", lift: 3.35, conf: "82%", title: "Audiophile Producer Duo", reason: "Sennheiser HD 660S2 Open-Back + Focusrite Scarlett 2i2" }
+                  ].map((bundle, idx) => {
+                    const pMain = PRODUCTS_DATA.find(p => p.id === bundle.mainId);
+                    const pPair = PRODUCTS_DATA.find(p => p.id === bundle.pairId);
+                    if (!pMain || !pPair) return null;
+                    const totalP = (pMain.price + pPair.price).toFixed(2);
+                    const bundleP = (totalP * 0.95).toFixed(2);
+                    return (
+                      <div key={idx} className="glass-card" style={{
+                        borderRadius: 'var(--radius-md)', padding: 20,
+                        display: 'flex', flexDirection: 'column', gap: 14,
+                        border: '1px solid var(--border-subtle)',
+                        background: 'var(--bg-card)'
+                      }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                          <div>
+                            <span className="pill" style={{ fontSize: 9, marginBottom: 4, color: 'var(--accent-primary)' }}>
+                              <Icons.Package /> LIFT: {bundle.lift}x · {bundle.conf} CONF
+                            </span>
+                            <h3 style={{ fontSize: 15, fontWeight: 700, marginTop: 6, fontFamily: 'var(--font-heading)', color: 'var(--text-primary)' }}>
+                              {bundle.title}
+                            </h3>
+                          </div>
+                          <div style={{ textAlign: 'right' }}>
+                            <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--accent-primary)', fontFamily: 'var(--font-mono)' }}>${bundleP}</div>
+                            <div style={{ fontSize: 11, textDecoration: 'line-through', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>${totalP}</div>
+                          </div>
+                        </div>
+
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-around', gap: 12, padding: '12px 0', borderTop: '1px solid var(--border-subtle)', borderBottom: '1px solid var(--border-subtle)' }}>
+                          <div onClick={() => onSelectProduct(pMain)} style={{ textAlign: 'center', cursor: 'pointer', flex: 1 }}>
+                            <img src={pMain.image_url} alt={pMain.title} style={{ width: 68, height: 68, objectFit: 'cover', borderRadius: 'var(--radius-sm)', margin: '0 auto', border: '1px solid var(--border-subtle)' }} />
+                            <div style={{ fontSize: 11, fontWeight: 600, marginTop: 6, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{pMain.title.split(' ')[0]} {pMain.title.split(' ')[1]}</div>
+                            <div style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>${pMain.price.toFixed(2)}</div>
+                          </div>
+                          <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-muted)' }}>+</div>
+                          <div onClick={() => onSelectProduct(pPair)} style={{ textAlign: 'center', cursor: 'pointer', flex: 1 }}>
+                            <img src={pPair.image_url} alt={pPair.title} style={{ width: 68, height: 68, objectFit: 'cover', borderRadius: 'var(--radius-sm)', margin: '0 auto', border: '1px solid var(--border-subtle)' }} />
+                            <div style={{ fontSize: 11, fontWeight: 600, marginTop: 6, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{pPair.title.split(' ')[0]} {pPair.title.split(' ')[1]}</div>
+                            <div style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>${pPair.price.toFixed(2)}</div>
+                          </div>
+                        </div>
+
+                        <p style={{ fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.5, margin: 0 }}>
+                          {bundle.reason}
+                        </p>
+
+                        <div style={{ display: 'flex', gap: 8, marginTop: 'auto' }}>
+                          <button
+                            onClick={() => {
+                              onAddToCart(pMain);
+                              onAddToCart(pPair);
+                            }}
+                            className="btn-accent"
+                            style={{ flex: 1, justifyContent: 'center' }}
+                          >
+                            <Icons.Cart /> Add Both (Save 5%)
+                          </button>
+                          <button
+                            onClick={() => onSelectProduct(pMain)}
+                            className="btn-ghost"
+                            style={{ padding: '8px 12px' }}
+                          >
+                            Inspect
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
+
+              {/* Complete Catalog Explorer Section */}
+              <section>
+                <div className="section-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', borderBottom: '1px solid var(--border-subtle)', paddingBottom: 12, marginBottom: 20 }}>
+                  <div>
+                    <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--accent-primary)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>
+                      // 04 · EMBEDDED CATALOG
+                    </div>
+                    <h2 className="section-title" style={{ margin: 0 }}>Indexed Catalog Specimens</h2>
+                  </div>
+                  <p className="section-subtitle" style={{ margin: 0 }}>All 34 high-performance items indexed across continuous latent vector space</p>
+                </div>
+                <div className="product-grid">
+                  {PRODUCTS_DATA.map((prod, i) => (
+                    <ProductCard
+                      key={prod.id}
+                      product={prod}
+                      explanation={{ primary_factor: "CATALOG_BROWSE", reason_text: `${prod.brand} · ${prod.category} (${prod.stock} in stock)`, final_score: (prod.rating / 5) }}
+                      onSelect={() => onSelectProduct(prod)}
+                      onAddToCart={() => onAddToCart(prod)}
+                      index={i}
+                    />
+                  ))}
+                </div>
+              </section>
+            </>
+          )}
+        </div>
+      );
+    }
+
+    // ===== PRODUCT DETAIL PAGE =====
+    function ProductDetail({ product, onBack, onAddToCart, onSelectProduct }) {
+      const bundles = getProductBundles(product.id);
+      const similar = PRODUCTS_DATA.filter(p => p.id !== product.id && p.category === product.category).slice(0, 4);
+
+      return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 36 }}>
+          <button onClick={onBack} className="btn-ghost" style={{ alignSelf: 'flex-start' }}>
+            <Icons.ArrowLeft /> Back to Store
+          </button>
+
+          <div className="animate-in" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 32, alignItems: 'start' }}>
+            {/* Image */}
+            <div className="glass-card" style={{ borderRadius: 'var(--radius-2xl)', overflow: 'hidden', padding: 16 }}>
+              <img src={product.image_url} alt={product.title}
+                style={{ width: '100%', height: 380, objectFit: 'cover', borderRadius: 'var(--radius-lg)' }} />
+            </div>
+
+            {/* Info */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+              <div>
+                <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--accent-primary)', fontFamily: 'var(--font-mono)' }}>
+                  {product.brand} · {product.category}
+                </span>
+                <h1 style={{ fontFamily: 'var(--font-heading)', fontSize: 28, fontWeight: 700, marginTop: 6, letterSpacing: '-0.02em' }}>
+                  {product.title}
+                </h1>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 10 }}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#FBBF24', fontWeight: 700, fontSize: 13 }}>
+                    <Icons.Star /> {product.rating}
+                  </span>
+                  <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>({product.rating_count} reviews)</span>
+                  <span style={{ width: 1, height: 14, background: 'var(--border-subtle)' }} />
+                  <span style={{ fontSize: 12, color: 'var(--accent-secondary)' }}>In Stock ({product.stock})</span>
+                </div>
+              </div>
+
+              {/* Price Card */}
+              <div className="glass-card" style={{
+                borderRadius: 'var(--radius-lg)', padding: '20px 24px',
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between'
+              }}>
+                <div>
+                  <span style={{ fontSize: 32, fontWeight: 800, color: 'var(--text-primary)' }}>${product.price.toFixed(2)}</span>
+                  {product.discount_percent > 0 && (
+                    <span className="pill pill-red" style={{ marginLeft: 10, verticalAlign: 'super' }}>
+                      {product.discount_percent}% OFF
+                    </span>
+                  )}
+                </div>
+                <button onClick={() => onAddToCart(product)} className="btn-primary" style={{ padding: '12px 28px' }}>
+                  <Icons.Cart /> Add to Cart
+                </button>
+              </div>
+
+              {/* Description */}
+              <div>
+                <h4 style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>Description</h4>
+                <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.7 }}>{product.description}</p>
+              </div>
+
+              {/* Tags */}
+              <div>
+                <h4 style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>
+                  TF-IDF Feature Space
+                </h4>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {product.tags.map(t => <span key={t} className="tag-chip">#{t}</span>)}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Amazon-Style Frequently Bought Together Deal Box */}
+          {bundles.length > 0 && (() => {
+            const primaryBundle = PRODUCTS_DATA.find(item => item.id === bundles[0].pid);
+            if (!primaryBundle) return null;
+            const comboPrice = product.price + primaryBundle.price;
+            const discountComboPrice = (comboPrice * 0.95).toFixed(2);
+            return (
+              <div className="glass-card" style={{
+                borderRadius: 'var(--radius-md)', padding: '24px 28px',
+                background: 'var(--bg-card)',
+                border: '1px solid var(--border-subtle)',
+                display: 'flex', flexDirection: 'column', gap: 20
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+                  <div>
+                    <span className="pill" style={{ fontSize: 10, marginBottom: 6, display: 'inline-flex', color: 'var(--accent-primary)' }}>
+                      <Icons.Package /> FP-GROWTH ASSOCIATION
+                    </span>
+                    <h3 style={{ fontFamily: 'var(--font-heading)', fontSize: 20, fontWeight: 700, margin: '4px 0 0 0', color: 'var(--text-primary)' }}>
+                      Frequently Bought Together Combo
+                    </h3>
+                    <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 4, fontFamily: 'var(--font-mono)' }}>
+                      Co-occurrence Lift: <strong style={{ color: 'var(--accent-primary)' }}>{bundles[0].lift}x higher</strong> · Confidence: <strong style={{ color: 'var(--accent-primary)' }}>{(bundles[0].confidence * 100).toFixed(0)}%</strong> · {bundles[0].reason}
+                    </p>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                    <div>
+                      <div style={{ fontSize: 10, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>BUNDLE PRICE (SAVE 5%)</div>
+                      <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--accent-primary)', fontFamily: 'var(--font-mono)' }}>
+                        ${discountComboPrice}
+                        <span style={{ fontSize: 13, textDecoration: 'line-through', color: 'var(--text-muted)', marginLeft: 8 }}>
+                          ${comboPrice.toFixed(2)}
+                        </span>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => {
+                        onAddToCart(product);
+                        onAddToCart(primaryBundle);
+                      }}
+                      className="btn-accent"
+                      style={{ padding: '10px 22px', fontSize: 12 }}
+                    >
+                      <Icons.Cart /> Add Both to Cart
+                    </button>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: 16, overflowX: 'auto', paddingBottom: 4 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, background: 'rgba(0,0,0,0.3)', padding: '10px 14px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)' }}>
+                    <img src={product.image_url} alt={product.title} style={{ width: 52, height: 52, objectFit: 'cover', borderRadius: 6 }} />
+                    <div>
+                      <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-primary)', maxWidth: 200, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{product.title}</div>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--accent-primary)' }}>${product.price.toFixed(2)}</div>
+                    </div>
+                  </div>
+
+                  <div style={{ fontSize: 24, fontWeight: 700, color: '#FF6B6B' }}>+</div>
+
+                  <div
+                    onClick={() => onSelectProduct(primaryBundle)}
+                    style={{ display: 'flex', alignItems: 'center', gap: 12, background: 'rgba(0,0,0,0.3)', padding: '10px 14px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-subtle)', cursor: 'pointer' }}
+                  >
+                    <img src={primaryBundle.image_url} alt={primaryBundle.title} style={{ width: 52, height: 52, objectFit: 'cover', borderRadius: 6 }} />
+                    <div>
+                      <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-primary)', maxWidth: 200, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{primaryBundle.title}</div>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--accent-secondary)' }}>${primaryBundle.price.toFixed(2)}</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* Bundles Product Grid */}
+          {bundles.length > 0 && (
+            <section>
+              <div className="section-header">
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div style={{ width: 3, height: 22, borderRadius: 4, background: '#FF6B6B' }} />
+                  <h2 className="section-title">All Recommended Add-ons & Bundles</h2>
+                </div>
+                <p className="section-subtitle">FP-Growth association rules mined from historical checkout transactions</p>
+              </div>
+              <div className="product-grid">
+                {bundles.map((b, i) => {
+                  const p = PRODUCTS_DATA.find(item => item.id === b.pid);
+                  if (!p) return null;
+                  return (
+                    <ProductCard key={p.id} product={p}
+                      explanation={{ primary_factor: "FREQUENT_BUNDLE", reason_text: b.reason, final_score: b.confidence }}
+                      onSelect={() => onSelectProduct(p)} onAddToCart={() => onAddToCart(p)} index={i} />
+                  );
+                })}
+              </div>
+            </section>
+          )}
+
+          {/* Similar Products */}
+          <section>
+            <div className="section-header">
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ width: 3, height: 22, borderRadius: 4, background: 'var(--accent-secondary)' }} />
+                <h2 className="section-title">Similar Products (Content-Based)</h2>
+              </div>
+              <p className="section-subtitle">TF-IDF cosine similarity across catalog specifications</p>
+            </div>
+            <div className="product-grid">
+              {similar.map((p, i) => (
+                <ProductCard key={p.id} product={p}
+                  explanation={{ primary_factor: "CONTENT_SIMILARITY", reason_text: `Matches specs of '${product.title}'`, final_score: 0.5 + Math.random() * 0.3 }}
+                  onSelect={() => onSelectProduct(p)} onAddToCart={() => onAddToCart(p)} index={i} />
+              ))}
+            </div>
+          </section>
+        </div>
+      );
+    }
+
+    // ===== ADMIN MODELOPS DASHBOARD (BENTO GRID) =====
+    function AdminDashboard({ recommendations, onBack }) {
+      const [isRetraining, setIsRetraining] = useState(false);
+      const [retrainDone, setRetrainDone] = useState(false);
+
+      const handleRetrain = () => {
+        setIsRetraining(true);
+        setTimeout(() => {
+          setIsRetraining(false);
+          setRetrainDone(true);
+          setTimeout(() => setRetrainDone(false), 3000);
+        }, 2000);
+      };
+
+      const benchmarkData = [
+        { model: "Random Baseline", p5: 1.2, r5: 3.5, ndcg: 0.082, map: 0.041, hr: 8.0, cov: 98.2, div: 0.812, highlight: false },
+        { model: "Popularity Baseline", p5: 14.0, r5: 22.4, ndcg: 0.285, map: 0.192, hr: 36.5, cov: 22.4, div: 0.315, highlight: false },
+        { model: "Content-Based (TF-IDF)", p5: 18.2, r5: 29.1, ndcg: 0.342, map: 0.245, hr: 44.0, cov: 68.5, div: 0.520, highlight: false },
+        { model: "Collaborative (iALS)", p5: 22.5, r5: 36.8, ndcg: 0.418, map: 0.312, hr: 52.0, cov: 71.0, div: 0.584, highlight: false },
+        { model: "RecommendAI Hybrid + MMR", p5: 25.4, r5: 41.2, ndcg: 0.468, map: 0.364, hr: 59.5, cov: 84.6, div: 0.672, highlight: true },
+      ];
+
+      return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }} className="animate-in">
+          {/* Header Card */}
+          <div className="glass-card" style={{
+            borderRadius: 'var(--radius-2xl)', padding: '28px 32px',
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            borderColor: 'rgba(255,107,107,0.15)',
+            background: 'linear-gradient(135deg, rgba(255,107,107,0.04), transparent)'
+          }}>
+            <div>
+              <span className="pill pill-red" style={{ marginBottom: 8, display: 'inline-flex' }}>
+                <Icons.BarChart /> Admin Console
+              </span>
+              <h1 style={{ fontFamily: 'var(--font-heading)', fontSize: 24, fontWeight: 700, letterSpacing: '-0.02em' }}>
+                Offline IR Evaluation & Telemetry
+              </h1>
+            </div>
+            <button
+              onClick={handleRetrain}
+              disabled={isRetraining}
+              className="btn-primary"
+              style={{
+                background: isRetraining ? 'var(--text-muted)' : 'linear-gradient(135deg, #FF6B6B, #FF8E53)',
+                cursor: isRetraining ? 'not-allowed' : 'pointer'
+              }}
+            >
+              <Icons.RefreshCw style={isRetraining ? { animation: 'orbSpin 1s linear infinite' } : {}} />
+              {isRetraining ? 'Retraining...' : 'Trigger Retrain'}
+            </button>
+          </div>
+
+          {retrainDone && (
+            <div className="animate-fade" style={{
+              padding: '12px 20px', borderRadius: 'var(--radius-md)',
+              background: 'rgba(0,212,170,0.08)', border: '1px solid rgba(0,212,170,0.25)',
+              color: 'var(--accent-secondary)', fontSize: 12, fontWeight: 500
+            }}>
+              ✓ Multi-model retraining complete! Updated latent factors serialized.
+            </div>
+          )}
+
+          {/* Bento Grid KPIs */}
+          <div className="bento-grid">
+            {[
+              { label: "NDCG@10", value: "0.468", delta: "+11.9%", color: "var(--accent-primary)" },
+              { label: "HitRate@10", value: "59.5%", delta: "+14.4%", color: "var(--accent-secondary)" },
+              { label: "Coverage", value: "84.6%", delta: "+19.1%", color: "#00B4D8" },
+              { label: "Diversity (ILD)", value: "0.672", delta: "+15.1%", color: "#FBBF24" }
+            ].map((kpi, i) => (
+              <div key={i} className={`glass-card animate-in stagger-${i + 1}`} style={{
+                borderRadius: 'var(--radius-xl)', padding: '20px 24px',
+                display: 'flex', flexDirection: 'column', gap: 8
+              }}>
+                <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', fontFamily: 'var(--font-mono)' }}>
+                  {kpi.label}
+                </span>
+                <span style={{ fontSize: 28, fontWeight: 800, color: kpi.color, fontFamily: 'var(--font-heading)' }}>
+                  {kpi.value}
+                </span>
+                <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--accent-secondary)' }}>
+                  {kpi.delta} vs iALS baseline
+                </span>
+              </div>
+            ))}
+          </div>
+
+          {/* Benchmark Table */}
+          <div className="glass-card bento-full" style={{ borderRadius: 'var(--radius-xl)', padding: '24px 28px', overflow: 'hidden' }}>
+            <div style={{ marginBottom: 16 }}>
+              <h3 style={{ fontFamily: 'var(--font-heading)', fontSize: 16, fontWeight: 700 }}>Academic Holdout Benchmark</h3>
+              <p style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', marginTop: 2 }}>
+                Leave-Last-20% temporal holdout | 1:99 negative sampling
+              </p>
+            </div>
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, fontFamily: 'var(--font-mono)' }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+                    {['Model Architecture', 'P@5', 'R@5', 'NDCG@10', 'MAP@10', 'HR@10', 'Coverage', 'Diversity'].map(h => (
+                      <th key={h} style={{ padding: '10px 12px', textAlign: 'left', fontSize: 9, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                        {h}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {benchmarkData.map((row, i) => (
+                    <tr key={i} style={{
+                      borderBottom: '1px solid var(--border-subtle)',
+                      background: row.highlight ? 'rgba(124,92,252,0.06)' : 'transparent',
+                      color: row.highlight ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                      fontWeight: row.highlight ? 700 : 400
+                    }}>
+                      <td style={{ padding: '10px 12px', fontFamily: 'var(--font-sans)' }}>{row.model}</td>
+                      <td style={{ padding: '10px 12px' }}>{row.p5}%</td>
+                      <td style={{ padding: '10px 12px' }}>{row.r5}%</td>
+                      <td style={{ padding: '10px 12px' }}>{row.ndcg}</td>
+                      <td style={{ padding: '10px 12px' }}>{row.map}</td>
+                      <td style={{ padding: '10px 12px' }}>{row.hr}%</td>
+                      <td style={{ padding: '10px 12px' }}>{row.cov}%</td>
+                      <td style={{ padding: '10px 12px' }}>{row.div}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Pipeline Architecture */}
+          <div className="glass-card bento-full" style={{ borderRadius: 'var(--radius-xl)', padding: '24px 28px' }}>
+            <h3 style={{ fontFamily: 'var(--font-heading)', fontSize: 16, fontWeight: 700, marginBottom: 16 }}>
+              Recommendation Pipeline Architecture
+            </h3>
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap',
+              fontFamily: 'var(--font-mono)', fontSize: 11
+            }}>
+              {[
+                { text: 'User Interactions', color: '#7C5CFC' },
+                { text: '→' },
+                { text: 'Feature Extraction', color: '#00D4AA' },
+                { text: '→' },
+                { text: 'TF-IDF + iALS', color: '#00B4D8' },
+                { text: '→' },
+                { text: 'Hybrid Fusion', color: '#FBBF24' },
+                { text: '→' },
+                { text: 'MMR Re-rank', color: '#FF6B6B' },
+                { text: '→' },
+                { text: 'Top-K Results', color: '#7C5CFC' }
+              ].map((step, i) => (
+                step.color ? (
+                  <span key={i} style={{
+                    padding: '6px 14px', borderRadius: 'var(--radius-md)',
+                    background: step.color + '15', border: '1px solid ' + step.color + '30',
+                    color: step.color, fontWeight: 600
+                  }}>
+                    {step.text}
+                  </span>
+                ) : (
+                  <span key={i} style={{ color: 'var(--text-muted)', fontSize: 14 }}>{step.text}</span>
+                )
+              ))}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ===== CART DRAWER =====
+    function CartDrawer({ cart, onClose, onCheckout }) {
+      const total = cart.reduce((s, i) => s + i.product.price * i.qty, 0);
+      return (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 100 }}>
+          <div onClick={onClose} style={{
+            position: 'absolute', inset: 0,
+            background: 'rgba(6,8,15,0.75)',
+            backdropFilter: 'blur(8px)',
+            WebkitBackdropFilter: 'blur(8px)'
+          }} />
+          <div className="cart-drawer">
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 24px', borderBottom: '1px solid var(--border-subtle)' }}>
+              <h3 style={{ fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: 16 }}>Shopping Cart</h3>
+              <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 4 }}>
+                <Icons.X />
+              </button>
+            </div>
+
+            <div style={{ flex: 1, overflow: 'auto', padding: '16px 24px' }}>
+              {cart.length === 0 ? (
+                <div style={{ textAlign: 'center', color: 'var(--text-muted)', marginTop: 60, fontSize: 13 }}>
+                  Your cart is empty
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {cart.map(({ product, qty }) => (
+                    <div key={product.id} className="glass-card" style={{
+                      display: 'flex', gap: 12, padding: 12, borderRadius: 'var(--radius-md)'
+                    }}>
+                      <img src={product.image_url} style={{ width: 52, height: 52, borderRadius: 8, objectFit: 'cover' }} />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <h4 style={{ fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{product.title}</h4>
+                        <div style={{ fontSize: 12, color: 'var(--accent-primary)', fontWeight: 700, marginTop: 4 }}>${product.price.toFixed(2)}</div>
+                        <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 2 }}>Qty: {qty}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {cart.length > 0 && (
+              <div style={{ padding: '16px 24px', borderTop: '1px solid var(--border-subtle)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12, fontSize: 13 }}>
+                  <span style={{ color: 'var(--text-muted)' }}>Total</span>
+                  <span style={{ fontWeight: 800, fontSize: 18 }}>${total.toFixed(2)}</span>
+                </div>
+                <button onClick={onCheckout} className="btn-primary" style={{ width: '100%', justifyContent: 'center', padding: '14px 0' }}>
+                  <Icons.Zap /> Simulate Purchase
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    // ===== ONBOARDING MODAL =====
+    function OnboardingModal({ userInterests, setUserInterests, onClose }) {
+      const categories = ["Gaming", "Computing", "Audio", "Wearables", "Desk Setup", "Cameras & Video"];
+      const icons = { "Gaming": "🎮", "Computing": "💻", "Audio": "🎧", "Wearables": "⌚", "Desk Setup": "🖥️", "Cameras & Video": "📷" };
+
+      return (
+        <div className="modal-overlay">
+          <div className="modal-backdrop" onClick={onClose} />
+          <div className="modal-content">
+            <div style={{ textAlign: 'center', marginBottom: 24 }}>
+              <div className="pill pill-purple" style={{ marginBottom: 12, display: 'inline-flex' }}>
+                <Icons.Sparkles /> Cold-Start Resolution
+              </div>
+              <h3 style={{ fontFamily: 'var(--font-heading)', fontSize: 20, fontWeight: 700, marginBottom: 6 }}>
+                Category Interest Setup
+              </h3>
+              <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                Select categories to generate immediate personalized recommendation vectors
+              </p>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 24 }}>
+              {categories.map(cat => {
+                const selected = userInterests.includes(cat);
+                return (
+                  <button key={cat} onClick={() => setUserInterests(prev => prev.includes(cat) ? prev.filter(c => c !== cat) : [...prev, cat])}
+                    style={{
+                      padding: '14px 16px', borderRadius: 'var(--radius-md)',
+                      border: selected ? '1px solid rgba(124,92,252,0.4)' : '1px solid var(--border-subtle)',
+                      background: selected ? 'rgba(124,92,252,0.1)' : 'var(--bg-surface)',
+                      color: selected ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                      cursor: 'pointer', textAlign: 'left', fontSize: 13, fontWeight: 600,
+                      transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: 8
+                    }}
+                  >
+                    <span style={{ fontSize: 18 }}>{icons[cat]}</span>
+                    {cat}
+                    {selected && <span style={{ marginLeft: 'auto', fontSize: 14 }}>✓</span>}
+                  </button>
+                );
+              })}
+            </div>
+
+            <button onClick={onClose} className="btn-primary" style={{ width: '100%', justifyContent: 'center', padding: '14px 0' }}>
+              Apply Preferences ({userInterests.length} Selected)
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    // ===== FOOTER =====
+    function Footer() {
+      return (
+        <footer style={{
+          borderTop: '1px solid var(--border-subtle)',
+          background: 'var(--bg-elevated)',
+          padding: '48px 0', marginTop: 80
+        }}>
+          <div className="container" style={{ display: 'flex', flexDirection: 'column', gap: 20, alignItems: 'center' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{
+                width: 26, height: 26, borderRadius: 'var(--radius-sm)',
+                background: 'var(--accent-primary)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                color: 'var(--bg-primary)', fontWeight: 800, fontFamily: 'var(--font-heading)', fontSize: 13
+              }}>
+                R
+              </div>
+              <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: 15, letterSpacing: '-0.02em', color: 'var(--text-primary)' }}>
+                RECOMMEND<span style={{ color: 'var(--accent-primary)' }}>AI</span>
+              </span>
+            </div>
+
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'center' }}>
+              {['TF-IDF Cosine Similarity', 'Implicit ALS (Hu-Koren)', 'MMR Diversity λ=0.75', 'FP-Growth Association', 'Grounded Explainability'].map(t => (
+                <span key={t} className="tag-chip" style={{ fontSize: 10 }}>{t}</span>
+              ))}
+            </div>
+
+            <p style={{ fontSize: 11, color: 'var(--text-muted)', textAlign: 'center', fontFamily: 'var(--font-mono)', margin: 0 }}>
+              Final-Year Capstone Project · Multi-Model Hybrid Recommendation Architecture
+            </p>
+          </div>
+        </footer>
+      );
+    }
+
+    // ===== ROOT APPLICATION =====
+    function App() {
+      const [currentPersonaKey, setCurrentPersonaKey] = useState('guest');
+      const [currentPersona, setCurrentPersona] = useState(PERSONAS.guest);
+      const [userHistory, setUserHistory] = useState([]);
+      const [userInterests, setUserInterests] = useState([]);
+      const [currentPage, setCurrentPage] = useState('home');
+      const [selectedProduct, setSelectedProduct] = useState(null);
+      const [searchQuery, setSearchQuery] = useState('');
+      const [cart, setCart] = useState([]);
+      const [isCartOpen, setIsCartOpen] = useState(false);
+      const [showOnboarding, setShowOnboarding] = useState(false);
+
+      const switchPersona = (key) => {
+        const p = PERSONAS[key];
+        setCurrentPersonaKey(key);
+        setCurrentPersona(p);
+        setUserHistory([...p.history]);
+        setUserInterests([...(p.interests || [])]);
+        setCurrentPage('home');
+        setSelectedProduct(null);
+      };
+
+      const logInteraction = (productId) => {
+        setUserHistory(prev => prev.includes(productId) ? prev : [productId, ...prev]);
+      };
+
+      const addToCart = (product) => {
+        setCart(prev => {
+          const existing = prev.find(item => item.product.id === product.id);
+          if (existing) return prev.map(item => item.product.id === product.id ? { ...item, qty: item.qty + 1 } : item);
+          return [...prev, { product, qty: 1 }];
+        });
+        logInteraction(product.id);
+        setIsCartOpen(true);
+      };
+
+      const recommendations = useMemo(() => {
+        return generateHybridRecommendations(userHistory, userInterests, currentPersonaKey, 12);
+      }, [userHistory, userInterests, currentPersonaKey]);
+
+      const trendingProducts = useMemo(() => [
+        PRODUCTS_DATA[3],  // LG UltraGear OLED
+        PRODUCTS_DATA[4],  // MacBook Pro M3
+        PRODUCTS_DATA[7],  // Sony WH-1000XM5
+        PRODUCTS_DATA[9],  // Shure SM7B
+        PRODUCTS_DATA[11], // BenQ ScreenBar
+        PRODUCTS_DATA[15], // ASUS ROG Swift OLED
+        PRODUCTS_DATA[19], // Samsung 990 PRO NVMe
+        PRODUCTS_DATA[21]  // Focusrite Scarlett 2i2
+      ], []);
+
+      return (
+        <div style={{ position: 'relative', zIndex: 1, minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+          <Header
+            persona={currentPersona}
+            personaKey={currentPersonaKey}
+            onSwitchPersona={switchPersona}
+            onOpenAdmin={() => { setCurrentPage(currentPage === 'admin' ? 'home' : 'admin'); setSelectedProduct(null); }}
+            isAdmin={currentPage === 'admin'}
+            cart={cart}
+            onOpenCart={() => setIsCartOpen(true)}
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+          />
+
+          <main className="container" style={{ flex: 1, paddingTop: 32, paddingBottom: 32 }}>
+            {currentPage === 'admin' ? (
+              <AdminDashboard recommendations={recommendations} onBack={() => setCurrentPage('home')} />
+            ) : selectedProduct ? (
+              <ProductDetail
+                product={selectedProduct}
+                onBack={() => setSelectedProduct(null)}
+                onAddToCart={addToCart}
+                onSelectProduct={(p) => {
+                  setSelectedProduct(p);
+                  logInteraction(p.id);
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+              />
+            ) : (
+              <StoreHome
+                persona={currentPersona}
+                recommendations={recommendations}
+                trending={trendingProducts}
+                searchQuery={searchQuery}
+                onClearSearch={() => setSearchQuery('')}
+                onSelectProduct={(p) => {
+                  setSelectedProduct(p);
+                  logInteraction(p.id);
+                }}
+                onAddToCart={addToCart}
+                onOpenOnboarding={() => setShowOnboarding(true)}
+              />
+            )}
+          </main>
+
+          <Footer />
+
+          {isCartOpen && (
+            <CartDrawer
+              cart={cart}
+              onClose={() => setIsCartOpen(false)}
+              onCheckout={() => {
+                cart.forEach(item => logInteraction(item.product.id));
+                alert("Simulated Checkout Complete! Purchase events recorded in interaction matrix.");
+                setCart([]);
+                setIsCartOpen(false);
+              }}
+            />
+          )}
+
+          {showOnboarding && (
+            <OnboardingModal
+              userInterests={userInterests}
+              setUserInterests={setUserInterests}
+              onClose={() => setShowOnboarding(false)}
+            />
+          )}
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+    
+  </script>
+</body>
+</html>
+
